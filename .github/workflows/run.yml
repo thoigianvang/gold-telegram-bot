@@ -1,22 +1,37 @@
-name: Telegram Test
+name: Gold News Bot
 
 on:
+  schedule:
+    - cron: "0 22 * * 0-4"   # 07:00 JST, báo lịch hôm nay
+    - cron: "*/30 12-15 * * 1-5" # 21:00-00:30 JST, kiểm tra tin đỏ mỗi 30 phút
   workflow_dispatch:
 
 jobs:
-  send:
+  daily:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - run: pip install requests
-
       - run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          MODE: daily
+
+  warning:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - run: python main.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          MODE: warning
