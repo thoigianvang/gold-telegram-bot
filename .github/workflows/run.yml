@@ -2,9 +2,9 @@ name: Gold News Bot
 
 on:
   schedule:
-    - cron: '0 22 * * 0-4'       # 07:00 JST: báo lịch tin vàng hôm nay
-    - cron: '*/30 12-15 * * 1-5' # 21:00-00:30 JST: báo trước tin đỏ
-    - cron: '*/15 13-16 * * 1-5' # 22:00-01:00 JST: kiểm tra Actual sau tin
+    - cron: '0 22 * * 0-4'        # 07:00 JST báo lịch tin vàng
+    - cron: '*/30 12-15 * * 1-5'  # 21:00-00:30 JST báo trước tin
+    - cron: '*/15 13-16 * * 1-5'  # 22:00-01:00 JST kiểm tra Actual
   workflow_dispatch:
 
 jobs:
