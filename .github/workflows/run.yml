@@ -2,22 +2,22 @@ name: Gold News Bot
 
 on:
   schedule:
-    # TEST tự động: chạy mỗi 5 phút để kiểm tra
-    - cron: '*/5 * * * *'
 
-    # 07:00 sáng Nhật JST: gửi lịch tin vàng hôm nay
-    - cron: '0 22 * * 0-4'
+    # 07:00 JST mỗi ngày
+    - cron: '0 22 * * *'
 
-    # Thứ 2-6: kiểm tra tin sắp ra
-    - cron: '*/30 * * * 1-5'
+    # Mỗi 30 phút
+    - cron: '*/30 * * * *'
 
-    # Thứ 2-6: kiểm tra Actual sau tin
-    - cron: '*/15 * * * 1-5'
+    # Mỗi 15 phút
+    - cron: '*/15 * * * *'
 
   workflow_dispatch:
 
 jobs:
+
   daily:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
     runs-on: ubuntu-latest
 
     steps:
@@ -36,8 +36,8 @@ jobs:
           MODE: daily
 
   warning:
-    runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -55,8 +55,8 @@ jobs:
           MODE: warning
 
   actual:
-    runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
