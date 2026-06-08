@@ -348,7 +348,6 @@ def daily_report(events):
 
     return "\n".join(lines)
 
-
 def warning_report(events):
     now = now_jst()
     lines = []
@@ -357,7 +356,7 @@ def warning_report(events):
         diff = (e["dt"] - now).total_seconds() / 60
 
         if 0 <= diff <= 35 and e["mark"] in ["🔴", "🟡"]:
-            lines.append(
+            text = (
                 "🚨 <b>SẮP CÓ TIN VÀNG</b>\n\n"
                 f"Còn khoảng {int(diff)} phút\n\n"
                 f"{safe(e['session'])}\n"
@@ -368,4 +367,8 @@ def warning_report(events):
                 f"Previous: {safe(e['previous'])}\n\n"
                 f"{before_note(e['country'], e['title'])}\n\n"
                 "⚠️ Không vào lệnh trước tin.\n"
-                "Chờ tin ra 5–15 phút rồi xem Sweep + CHOCH.
+                "Chờ tin ra 5-15 phút rồi xem Sweep + CHOCH."
+            )
+            lines.append(text)
+
+    return "\n\n".join(lines)
