@@ -13,81 +13,82 @@ JST = timezone(timedelta(hours=9))
 
 GOLD_COUNTRIES = ["USD", "EUR", "GBP", "JPY", "CNY", "AUD", "CAD", "CHF"]
 
-USD_RED_NEWS = [
-    "CPI", "CORE CPI", "PPI", "PCE", "CORE PCE",
-    "NFP", "NON-FARM", "NONFARM",
-    "FOMC", "FED", "POWELL",
-    "UNEMPLOYMENT", "JOBLESS CLAIMS",
-    "RETAIL SALES", "ISM", "GDP"
+USD_STRONG = [
+    "CPI", "PPI", "PCE", "CORE PCE", "NFP", "NON-FARM", "NONFARM",
+    "FOMC", "FED", "POWELL", "UNEMPLOYMENT", "JOBLESS CLAIMS",
+    "RETAIL SALES", "ISM", "GDP", "PMI"
 ]
 
-MEDIUM_GOLD_NEWS = [
-    "PMI", "ECB", "BOE", "BOJ", "RBA",
-    "LAGARDE", "EMPLOYMENT", "MANUFACTURING",
-    "SERVICES", "CONSUMER SENTIMENT", "CONFIDENCE"
+SELL_IF_HIGHER = [
+    "CPI", "PPI", "PCE", "CORE PCE", "NFP", "NON-FARM", "NONFARM",
+    "RETAIL SALES", "ISM", "GDP", "PMI"
 ]
 
-SELL_GOLD_IF_HIGHER = [
-    "CPI", "CORE CPI", "PPI", "PCE", "CORE PCE",
-    "NFP", "NON-FARM", "NONFARM",
-    "RETAIL SALES", "GDP", "ISM", "PMI"
-]
-
-BUY_GOLD_IF_HIGHER = [
+BUY_IF_HIGHER = [
     "UNEMPLOYMENT", "JOBLESS CLAIMS"
 ]
 
+OTHER_IMPORTANT = [
+    "ECB", "BOE", "BOJ", "RBA", "PMI", "GDP", "CPI", "EMPLOYMENT",
+    "LAGARDE", "RATE", "CAIXIN"
+]
+
+
+def now_jst():
+    return datetime.now(JST)
+
+
+def safe(x):
+    return escape(str(x)) if x else "-"
+
+
+def has_word(text, words):
+    text = text.upper()
+    return any(w.upper() in text for w in words)
+
+
 def send(msg):
     if not msg:
-        print("Không có nội dung để gửi.")
+        print("NO MESSAGE")
         return
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
     for i in range(0, len(msg), 3900):
-        chunk = msg[i:i + 3900]
+        part = msg[i:i + 3900]
         r = requests.post(
             url,
             data={
                 "chat_id": CHAT_ID,
-                "text": chunk,
+                "text": part,
                 "parse_mode": "HTML"
             },
             timeout=20
         )
-        print("Telegram status:", r.status_code)
-        print("Telegram response:", r.text)
+        print("Telegram:", r.status_code, r.text)
         r.raise_for_status()
 
-def now_jst():
-    return datetime.now(JST)
-
-def safe(x):
-    return escape(str(x)) if x else "-"
-
-def has_keyword(title, words):
-    t = title.upper()
-    return any(w.upper() in t for w in words)
 
 def to_float(x):
     if not x:
         return None
 
     x = x.strip().replace("%", "").replace(",", "")
-    multiplier = 1
+    multi = 1
 
     if x.upper().endswith("K"):
-        multiplier = 1000
+        multi = 1000
         x = x[:-1]
 
-    if x.upper().endswith("M"):
-        multiplier = 1000000
+    elif x.upper().endswith("M"):
+        multi = 1000000
         x = x[:-1]
 
     try:
-        return float(x) * multiplier
+        return float(x) * multi
     except:
         return None
+
 
 def parse_date(date_text, time_text):
     try:
@@ -109,123 +110,129 @@ def parse_date(date_text, time_text):
     except:
         return datetime(d.year, d.month, d.day, 0, 0, tzinfo=JST)
 
+
 def session_name(country, dt):
     if country in ["JPY", "CNY", "AUD"]:
         return "🌏 Phiên Á"
+
     if country in ["EUR", "GBP", "CHF"]:
         return "🇬🇧 Phiên Âu"
+
     if country in ["USD", "CAD"]:
         return "🇺🇸 Phiên Mỹ"
 
     h = dt.hour
+
     if 6 <= h < 15:
         return "🌏 Phiên Á"
     if 15 <= h < 21:
         return "🇬🇧 Phiên Âu"
     if h >= 21 or h < 3:
         return "🇺🇸 Phiên Mỹ"
+
     return "🌙 Thanh khoản yếu"
+
 
 def is_gold_news(country, title, impact):
     if country not in GOLD_COUNTRIES:
         return False
 
     if country == "USD":
-        return impact == "High" or has_keyword(title, USD_RED_NEWS) or has_keyword(title, MEDIUM_GOLD_NEWS)
+        return impact == "High" or has_word(title, USD_STRONG)
 
     if impact == "High":
         return True
 
-    if country in ["JPY", "CNY", "AUD"]:
-        return has_keyword(title, ["BOJ", "RBA", "CPI", "GDP", "PMI", "CAIXIN", "EMPLOYMENT"])
+    return has_word(title, OTHER_IMPORTANT)
 
-    if country in ["EUR", "GBP", "CHF"]:
-        return has_keyword(title, ["ECB", "BOE", "CPI", "GDP", "PMI", "LAGARDE", "RATE"])
 
-    if country == "CAD":
-        return has_keyword(title, ["CPI", "GDP", "EMPLOYMENT", "RETAIL SALES"])
-
-    return False
-
-def event_strength(country, title, impact):
-    if country == "USD" and (impact == "High" or has_keyword(title, USD_RED_NEWS)):
+def strength(country, title, impact):
+    if country == "USD" and (impact == "High" or has_word(title, USD_STRONG)):
         return "🔴", "CỰC MẠNH"
 
     if impact == "High":
         return "🟡", "MẠNH"
 
-    if has_keyword(title, MEDIUM_GOLD_NEWS):
-        return "🟡", "VỪA"
+    return "🟡", "VỪA"
 
-    return "⚪", "NHẸ"
 
-def gold_before_note(country, title):
+def before_note(country, title):
     if country == "USD":
-        if has_keyword(title, SELL_GOLD_IF_HIGHER):
-            return "📌 <b>Kịch bản XAUUSD</b>\nActual &gt; Forecast → USD mạnh → SELL GOLD\nActual &lt; Forecast → USD yếu → BUY GOLD"
+        if has_word(title, SELL_IF_HIGHER):
+            return (
+                "📌 <b>Kịch bản XAUUSD</b>\n"
+                "Actual &gt; Forecast → USD mạnh → SELL GOLD\n"
+                "Actual &lt; Forecast → USD yếu → BUY GOLD"
+            )
 
-        if has_keyword(title, BUY_GOLD_IF_HIGHER):
-            return "📌 <b>Kịch bản XAUUSD</b>\nActual &gt; Forecast → USD yếu → BUY GOLD\nActual &lt; Forecast → USD mạnh → SELL GOLD"
+        if has_word(title, BUY_IF_HIGHER):
+            return (
+                "📌 <b>Kịch bản XAUUSD</b>\n"
+                "Actual &gt; Forecast → USD yếu → BUY GOLD\n"
+                "Actual &lt; Forecast → USD mạnh → SELL GOLD"
+            )
 
-        if has_keyword(title, ["FOMC", "FED", "POWELL"]):
-            return "📌 <b>Kịch bản XAUUSD</b>\nFed hawkish / nói cứng → SELL GOLD\nFed dovish / nói mềm → BUY GOLD"
-
-        return "📌 Tin USD mạnh hơn dự báo → vàng dễ giảm\nTin USD yếu hơn dự báo → vàng dễ tăng"
+        if has_word(title, ["FOMC", "FED", "POWELL"]):
+            return (
+                "📌 <b>Kịch bản XAUUSD</b>\n"
+                "Fed hawkish → SELL GOLD\n"
+                "Fed dovish → BUY GOLD"
+            )
 
     if country in ["JPY", "CNY", "AUD"]:
-        return "📌 <b>Phiên Á</b>\nTin Á có thể làm vàng quét thanh khoản.\nKhông vào trước tin, chờ phản ứng giá."
+        return "📌 <b>Phiên Á</b>\nTin Á có thể làm vàng quét mạnh. Chờ phản ứng giá."
 
     if country in ["EUR", "GBP", "CHF"]:
-        return "📌 <b>Phiên Âu</b>\nTin Âu có thể tạo sóng trước phiên Mỹ.\nChờ Sweep + CHOCH rồi mới vào."
+        return "📌 <b>Phiên Âu</b>\nTin Âu có thể tạo sóng trước phiên Mỹ."
 
-    if country == "CAD":
-        return "📌 <b>Tin CAD</b>\nẢnh hưởng gián tiếp tới USD.\nTheo dõi XAUUSD trên M5/M15."
+    return "📌 Chờ tin ra, không vào lệnh trước tin."
 
-    return "📌 XAUUSD: chờ tin ra, không vào lệnh trước tin."
 
-def gold_after_result(country, title, actual, forecast):
+def after_result(country, title, actual, forecast):
+    if country != "USD":
+        return "🥇 Tin ngoài USD: ưu tiên xem phản ứng giá M5/M15."
+
     a = to_float(actual)
     f = to_float(forecast)
 
-    if country != "USD":
-        return "🥇 XAUUSD: tin ngoài USD, ưu tiên xem phản ứng giá M5/M15."
-
     if a is None or f is None:
-        return "🥇 XAUUSD: chưa đủ dữ liệu Actual/Forecast để kết luận."
+        return "🥇 Chưa đủ dữ liệu Actual/Forecast để kết luận."
 
-    if has_keyword(title, SELL_GOLD_IF_HIGHER):
+    if has_word(title, SELL_IF_HIGHER):
         if a > f:
-            return "🥇 XAUUSD: Actual cao hơn Forecast → USD mạnh → ưu tiên SELL GOLD"
+            return "🥇 Actual cao hơn Forecast → USD mạnh → ưu tiên SELL GOLD"
         if a < f:
-            return "🥇 XAUUSD: Actual thấp hơn Forecast → USD yếu → ưu tiên BUY GOLD"
-        return "🥇 XAUUSD: Actual bằng Forecast → chờ phản ứng giá."
+            return "🥇 Actual thấp hơn Forecast → USD yếu → ưu tiên BUY GOLD"
+        return "🥇 Actual bằng Forecast → chờ phản ứng giá."
 
-    if has_keyword(title, BUY_GOLD_IF_HIGHER):
+    if has_word(title, BUY_IF_HIGHER):
         if a > f:
-            return "🥇 XAUUSD: thất nghiệp cao hơn dự báo → USD yếu → ưu tiên BUY GOLD"
+            return "🥇 Thất nghiệp cao hơn dự báo → USD yếu → ưu tiên BUY GOLD"
         if a < f:
-            return "🥇 XAUUSD: thất nghiệp thấp hơn dự báo → USD mạnh → ưu tiên SELL GOLD"
-        return "🥇 XAUUSD: Actual bằng Forecast → chờ phản ứng giá."
+            return "🥇 Thất nghiệp thấp hơn dự báo → USD mạnh → ưu tiên SELL GOLD"
+        return "🥇 Actual bằng Forecast → chờ phản ứng giá."
 
-    return "🥇 XAUUSD: cần xem phản ứng nến M5/M15."
+    return "🥇 Cần xem phản ứng nến M5/M15."
+
 
 def load_events():
     r = requests.get(CALENDAR_URL, timeout=20)
+    print("Calendar:", r.status_code)
     r.raise_for_status()
 
     root = ET.fromstring(r.content)
     today = now_jst().date()
     events = []
 
-    for e in root.findall("event"):
-        title = e.findtext("title", "").strip()
-        country = e.findtext("country", "").strip()
-        date_text = e.findtext("date", "").strip()
-        time_text = e.findtext("time", "").strip()
-        impact = e.findtext("impact", "").strip()
-        forecast = e.findtext("forecast", "").strip()
-        previous = e.findtext("previous", "").strip()
-        actual = e.findtext("actual", "").strip()
+    for item in root.findall("event"):
+        title = item.findtext("title", "").strip()
+        country = item.findtext("country", "").strip()
+        date_text = item.findtext("date", "").strip()
+        time_text = item.findtext("time", "").strip()
+        impact = item.findtext("impact", "").strip()
+        forecast = item.findtext("forecast", "").strip()
+        previous = item.findtext("previous", "").strip()
+        actual = item.findtext("actual", "").strip()
 
         dt = parse_date(date_text, time_text)
 
@@ -238,36 +245,43 @@ def load_events():
         if not is_gold_news(country, title, impact):
             continue
 
-        mark, strength = event_strength(country, title, impact)
+        mark, level = strength(country, title, impact)
 
         events.append({
             "dt": dt,
             "time": time_text,
             "title": title,
             "country": country,
-            "impact": impact,
             "forecast": forecast,
             "previous": previous,
             "actual": actual,
             "mark": mark,
-            "strength": strength,
+            "level": level,
             "session": session_name(country, dt)
         })
 
+    print("Events found:", len(events))
     return sorted(events, key=lambda x: x["dt"])
+
 
 def daily_report(events):
     today = now_jst().strftime("%Y-%m-%d")
 
     if not events:
-        return f"📅 <b>TIN VÀNG HÔM NAY</b>\n\nNgày: {today}\n\nHôm nay chưa có tin lớn ảnh hưởng trực tiếp tới XAUUSD.\nNếu là cuối tuần thì sàn vàng nghỉ."
+        return (
+            "📅 <b>TIN VÀNG HÔM NAY</b>\n\n"
+            f"Ngày: {today}\n\n"
+            "Hôm nay chưa có tin lớn ảnh hưởng trực tiếp tới XAUUSD.\n"
+            "Nếu là cuối tuần thì sàn vàng nghỉ."
+        )
 
-    lines = []
-    lines.append("🥇 <b>TIN VÀNG XAUUSD HÔM NAY</b>")
-    lines.append(f"Ngày: {today}")
-    lines.append("")
-    lines.append("🔴 Cực mạnh | 🟡 Mạnh/Vừa | ⚪ Nhẹ")
-    lines.append("")
+    lines = [
+        "🥇 <b>TIN VÀNG XAUUSD HÔM NAY</b>",
+        f"Ngày: {today}",
+        "",
+        "🔴 Cực mạnh | 🟡 Mạnh/Vừa",
+        ""
+    ]
 
     current_session = ""
 
@@ -277,12 +291,13 @@ def daily_report(events):
             lines.append(f"<b>{current_session}</b>")
 
         lines.append(f"{e['mark']} <b>{safe(e['time'])}</b> | {safe(e['country'])} | {safe(e['title'])}")
-        lines.append(f"Mức độ: {safe(e['strength'])}")
+        lines.append(f"Mức độ: {safe(e['level'])}")
         lines.append(f"Actual: {safe(e['actual'])} | Forecast: {safe(e['forecast'])} | Previous: {safe(e['previous'])}")
-        lines.append(gold_before_note(e["country"], e["title"]))
+        lines.append(before_note(e["country"], e["title"]))
         lines.append("")
 
     return "\n".join(lines)
+
 
 def warning_report(events):
     now = now_jst()
@@ -291,25 +306,23 @@ def warning_report(events):
     for e in events:
         diff = (e["dt"] - now).total_seconds() / 60
 
-        if 0 <= diff <= 35 and e["mark"] in ["🔴", "🟡"]:
-            lines.append("🚨 <b>SẮP CÓ TIN VÀNG</b>")
-            lines.append("")
-            lines.append(f"Còn khoảng {int(diff)} phút")
-            lines.append("")
-            lines.append(f"{safe(e['session'])}")
-            lines.append(f"{e['mark']} {safe(e['country'])} | {safe(e['title'])}")
-            lines.append(f"Mức độ: {safe(e['strength'])}")
-            lines.append(f"Giờ: {safe(e['time'])}")
-            lines.append(f"Forecast: {safe(e['forecast'])}")
-            lines.append(f"Previous: {safe(e['previous'])}")
-            lines.append("")
-            lines.append(gold_before_note(e["country"], e["title"]))
-            lines.append("")
-            lines.append("⚠️ Không vào lệnh trước tin.")
-            lines.append("Chờ tin ra 5–15 phút rồi xem Sweep + CHOCH.")
-            lines.append("")
+        if 0 <= diff <= 35:
+            lines.append(
+                "🚨 <b>SẮP CÓ TIN VÀNG</b>\n\n"
+                f"Còn khoảng {int(diff)} phút\n\n"
+                f"{safe(e['session'])}\n"
+                f"{e['mark']} {safe(e['country'])} | {safe(e['title'])}\n"
+                f"Mức độ: {safe(e['level'])}\n"
+                f"Giờ: {safe(e['time'])}\n"
+                f"Forecast: {safe(e['forecast'])}\n"
+                f"Previous: {safe(e['previous'])}\n\n"
+                f"{before_note(e['country'], e['title'])}\n\n"
+                "⚠️ Không vào lệnh trước tin.\n"
+                "Chờ tin ra 5–15 phút rồi xem Sweep + CHOCH."
+            )
 
-    return "\n".join(lines)
+    return "\n\n".join(lines)
+
 
 def actual_report(events):
     now = now_jst()
@@ -318,4 +331,35 @@ def actual_report(events):
     for e in events:
         diff = (now - e["dt"]).total_seconds() / 60
 
-        if 0 <= diff <= 90 and e["actual"] and e["mark"] 
+        if 0 <= diff <= 90 and e["actual"]:
+            lines.append(
+                "📊 <b>KẾT QUẢ TIN VÀNG</b>\n\n"
+                f"{safe(e['session'])}\n"
+                f"{e['mark']} {safe(e['country'])} | {safe(e['title'])}\n"
+                f"Mức độ: {safe(e['level'])}\n\n"
+                f"Actual: {safe(e['actual'])}\n"
+                f"Forecast: {safe(e['forecast'])}\n"
+                f"Previous: {safe(e['previous'])}\n\n"
+                f"{after_result(e['country'], e['title'], e['actual'], e['forecast'])}\n\n"
+                "⚠️ Không vào market ngay cây đầu tiên.\n"
+                "Chờ M5/M15 xác nhận hướng."
+            )
+
+    return "\n\n".join(lines)
+
+
+def main():
+    try:
+        print("MODE:", MODE)
+        print("TIME JST:", now_jst().strftime("%Y-%m-%d %H:%M:%S"))
+
+        events = load_events()
+
+        if MODE == "warning":
+            msg = warning_report(events)
+            if msg:
+                send(msg)
+            else:
+                print("No warning message")
+
+        elif MOD
