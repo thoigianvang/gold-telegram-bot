@@ -363,7 +363,6 @@ def warning_report(events):
 
     return "\n\n".join(reports)
 
-
 def actual_report(events):
     now = now_jst()
     reports = []
@@ -372,4 +371,16 @@ def actual_report(events):
         diff = (now - e["dt"]).total_seconds() / 60
 
         if 0 <= diff <= 20 and e["actual"] and e["mark"] in ["🔴", "🟡"]:
+
+            reports.append(
+                "📊 <b>KẾT QUẢ TIN VÀNG</b>\n\n"
+                f"{e['mark']} {safe(e['country'])} | {safe(e['title'])}\n\n"
+                f"Actual: {safe(e['actual'])}\n"
+                f"Forecast: {safe(e['forecast'])}\n"
+                f"Previous: {safe(e['previous'])}\n\n"
+                f"{after_result(e['country'], e['title'], e['actual'], e['forecast'])}"
+            )
+
+    return "\n\n".join(reports)
+
     
