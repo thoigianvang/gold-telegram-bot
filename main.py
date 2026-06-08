@@ -39,13 +39,14 @@ BUY_GOLD_IF_HIGHER = [
 
 def send(msg):
     if not msg:
+        print("Không có nội dung để gửi.")
         return
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
     for i in range(0, len(msg), 3900):
         chunk = msg[i:i + 3900]
-        requests.post(
+        r = requests.post(
             url,
             data={
                 "chat_id": CHAT_ID,
@@ -54,6 +55,9 @@ def send(msg):
             },
             timeout=20
         )
+        print("Telegram status:", r.status_code)
+        print("Telegram response:", r.text)
+        r.raise_for_status()
 
 def now_jst():
     return datetime.now(JST)
@@ -108,22 +112,18 @@ def parse_date(date_text, time_text):
 def session_name(country, dt):
     if country in ["JPY", "CNY", "AUD"]:
         return "🌏 Phiên Á"
-
     if country in ["EUR", "GBP", "CHF"]:
         return "🇬🇧 Phiên Âu"
-
     if country in ["USD", "CAD"]:
         return "🇺🇸 Phiên Mỹ"
 
     h = dt.hour
-
     if 6 <= h < 15:
         return "🌏 Phiên Á"
     if 15 <= h < 21:
         return "🇬🇧 Phiên Âu"
     if h >= 21 or h < 3:
         return "🇺🇸 Phiên Mỹ"
-
     return "🌙 Thanh khoản yếu"
 
 def is_gold_news(country, title, impact):
@@ -318,8 +318,4 @@ def actual_report(events):
     for e in events:
         diff = (now - e["dt"]).total_seconds() / 60
 
-        if 0 <= diff <= 90 and e["actual"] and e["mark"] in ["🔴", "🟡"]:
-            lines.append("📊 <b>KẾT QUẢ TIN VÀNG</b>")
-            lines.append("")
-            lines.append(f"{safe(e['session'])}")
-            li
+        if 0 <= diff <= 90 and e["actual"] and e["mark"] 
