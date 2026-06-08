@@ -2,22 +2,13 @@ name: Gold News Bot
 
 on:
   schedule:
-
-    # 07:00 JST mỗi ngày
-    - cron: '0 22 * * *'
-
-    # Mỗi 30 phút
-    - cron: '*/30 * * * *'
-
-    # Mỗi 15 phút
-    - cron: '*/15 * * * *'
+    - cron: '0 22 * * *'      # 07:00 JST báo lịch tin hôm nay
+    - cron: '*/15 * * * *'    # Mỗi 15 phút kiểm tra cảnh báo + actual
 
   workflow_dispatch:
 
 jobs:
-
-  daily:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
+  gold-news:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,45 +20,25 @@ jobs:
 
       - run: pip install requests
 
-      - run: python main.py
+      - name: Daily Report
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
+        run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           MODE: daily
 
-  warning:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - run: pip install requests
-
-      - run: python main.py
+      - name: Warning Report
+        if: github.event_name == 'schedule'
+        run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           MODE: warning
 
-  actual:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - run: pip install requests
-
-      - run: python main.py
+      - name: Actual Report
+        if: github.event_name == 'schedule'
+        run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
