@@ -1,4 +1,3 @@
-send("✅ Schedule test OK")
 import os
 import requests
 import xml.etree.ElementTree as ET
@@ -351,6 +350,7 @@ def actual_report(events):
 
 def main():
     try:
+        send("✅ Schedule test OK")
         print("MODE:", MODE)
         print("TIME JST:", now_jst().strftime("%Y-%m-%d %H:%M:%S"))
 
