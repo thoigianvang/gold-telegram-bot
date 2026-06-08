@@ -2,20 +2,33 @@ name: Gold News Bot
 
 on:
   schedule:
-    - cron: '0 22 * * 0-4'        # 07:00 JST báo lịch tin vàng
-    - cron: '*/30 12-15 * * 1-5'  # 21:00-00:30 JST báo trước tin
-    - cron: '*/15 13-16 * * 1-5'  # 22:00-01:00 JST kiểm tra Actual
+    # TEST tự động: chạy mỗi 5 phút để kiểm tra
+    - cron: '*/5 * * * *'
+
+    # 07:00 sáng Nhật JST: gửi lịch tin vàng hôm nay
+    - cron: '0 22 * * 0-4'
+
+    # Thứ 2-6: kiểm tra tin sắp ra
+    - cron: '*/30 * * * 1-5'
+
+    # Thứ 2-6: kiểm tra Actual sau tin
+    - cron: '*/15 * * * 1-5'
+
   workflow_dispatch:
 
 jobs:
   daily:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - run: pip install requests
+
       - run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -25,12 +38,16 @@ jobs:
   warning:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - run: pip install requests
+
       - run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -40,12 +57,16 @@ jobs:
   actual:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - run: pip install requests
+
       - run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
