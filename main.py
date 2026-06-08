@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
@@ -10,60 +11,120 @@ MODE = os.getenv("MODE", "daily")
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
 JST = timezone(timedelta(hours=9))
 
+# =====================================================
+# CẤU HÌNH TIN ẢNH HƯỞNG VÀNG
+# =====================================================
+
 GOLD_COUNTRIES = ["USD", "EUR", "GBP", "JPY", "CNY", "AUD", "CAD", "CHF"]
 
-USD_NEWS = [
-    "CPI", "CORE CPI", "PPI", "CORE PCE", "PCE",
+# Tin USD cực mạnh với XAUUSD
+USD_RED_NEWS = [
+    "CPI", "CORE CPI",
+    "PPI",
+    "PCE", "CORE PCE",
     "NFP", "NON-FARM", "NONFARM",
-    "FOMC", "FED", "POWELL",
-    "UNEMPLOYMENT", "JOBLESS CLAIMS",
-    "RETAIL SALES", "GDP", "ISM", "PMI"
+    "FOMC",
+    "FED INTEREST RATE",
+    "FED RATE",
+    "POWELL",
+    "UNEMPLOYMENT RATE",
+    "JOBLESS CLAIMS",
+    "RETAIL SALES",
+    "ISM MANUFACTURING",
+    "ISM SERVICES"
 ]
 
-ASIA_NEWS = [
-    "BOJ", "TOKYO CPI", "JAPAN CPI", "CPI",
-    "CHINA", "CAIXIN", "MANUFACTURING PMI",
-    "GDP", "RBA", "EMPLOYMENT"
+# Tin vừa/khá mạnh
+MEDIUM_GOLD_NEWS = [
+    "GDP",
+    "PMI",
+    "ECB",
+    "LAGARDE",
+    "BOE",
+    "BOJ",
+    "RBA",
+    "EMPLOYMENT",
+    "MANUFACTURING",
+    "SERVICES",
+    "CONSUMER SENTIMENT",
+    "CONFIDENCE"
 ]
 
-EUROPE_NEWS = [
-    "ECB", "LAGARDE", "EURO CPI", "GERMAN CPI",
-    "BOE", "UK CPI", "GDP", "PMI"
-]
-
+# Tin mà Actual cao hơn Forecast thường làm USD mạnh -> vàng giảm
 SELL_GOLD_IF_HIGHER = [
-    "CPI", "CORE CPI", "PPI", "CORE PCE", "PCE",
+    "CPI", "CORE CPI",
+    "PPI",
+    "PCE", "CORE PCE",
     "NFP", "NON-FARM", "NONFARM",
-    "RETAIL SALES", "GDP", "ISM", "PMI"
+    "RETAIL SALES",
+    "GDP",
+    "ISM",
+    "PMI"
 ]
 
+# Tin mà Actual cao hơn Forecast thường xấu cho USD -> vàng tăng
 BUY_GOLD_IF_HIGHER = [
-    "UNEMPLOYMENT", "JOBLESS CLAIMS"
+    "UNEMPLOYMENT RATE",
+    "JOBLESS CLAIMS"
 ]
+
+# =====================================================
+# TELEGRAM
+# =====================================================
 
 def send(msg):
+    if not msg:
+        return
+
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(
-        url,
-        data={
-            "chat_id": CHAT_ID,
-            "text": msg,
-            "parse_mode": "HTML"
-        },
-        timeout=20
-    )
+
+    # Telegram limit khoảng 4096 ký tự
+    chunks = [msg[i:i+3900] for i in range(0, len(msg), 3900)]
+
+    for chunk in chunks:
+        requests.post(
+            url,
+            data={
+                "chat_id": CHAT_ID,
+                "text": chunk,
+                "parse_mode": "HTML"
+            },
+            timeout=20
+        )
 
 def now_jst():
     return datetime.now(JST)
 
+# =====================================================
+# XỬ LÝ SỐ
+# =====================================================
+
 def to_float(x):
     if not x:
         return None
-    x = x.replace("%", "").replace("K", "").replace("M", "").replace(",", "").strip()
+
+    x = x.strip()
+    x = x.replace("%", "")
+    x = x.replace(",", "")
+
+    multiplier = 1
+
+    if x.upper().endswith("K"):
+        multiplier = 1000
+        x = x[:-1]
+
+    elif x.upper().endswith("M"):
+        multiplier = 1000000
+        x = x[:-1]
+
     try:
-        return float(x)
+        return float(x) * multiplier
     except:
         return None
+
+# =====================================================
+# GIỜ / PHIÊN
+# =====================================================
 
 def parse_date(date_text, time_text):
     try:
@@ -71,89 +132,140 @@ def parse_date(date_text, time_text):
     except:
         return None
 
-    if not time_text or time_text.lower() in ["all day", "tentative"]:
+    if not time_text:
+        return datetime(d.year, d.month, d.day, 0, 0, tzinfo=JST)
+
+    t_raw = time_text.strip().lower()
+
+    if t_raw in ["all day", "tentative"]:
         return datetime(d.year, d.month, d.day, 0, 0, tzinfo=JST)
 
     try:
-        t = datetime.strptime(time_text.lower(), "%I:%M%p").time()
+        t = datetime.strptime(t_raw, "%I:%M%p").time()
         return datetime(d.year, d.month, d.day, t.hour, t.minute, tzinfo=JST)
     except:
         return datetime(d.year, d.month, d.day, 0, 0, tzinfo=JST)
+
+def session_name(dt, country):
+    h = dt.hour
+
+    # Ưu tiên theo quốc gia trước
+    if country in ["JPY", "CNY", "AUD"]:
+        return "🌏 Phiên Á"
+
+    if country in ["EUR", "GBP", "CHF"]:
+        return "🇬🇧 Phiên Âu"
+
+    if country in ["USD", "CAD"]:
+        return "🇺🇸 Phiên Mỹ"
+
+    # Nếu không rõ thì phân loại theo giờ Nhật
+    if 6 <= h < 15:
+        return "🌏 Phiên Á"
+    if 15 <= h < 21:
+        return "🇬🇧 Phiên Âu"
+    if 21 <= h or h < 3:
+        return "🇺🇸 Phiên Mỹ"
+
+    return "🌙 Thanh khoản yếu"
+
+# =====================================================
+# PHÂN LOẠI TIN
+# =====================================================
+
+def has_keyword(title, keywords):
+    t = title.upper()
+    return any(k.upper() in t for k in keywords)
 
 def is_gold_news(country, title, impact):
     if country not in GOLD_COUNTRIES:
         return False
 
-    title_upper = title.upper()
+    t = title.upper()
 
+    # USD là trọng tâm vàng
+    if country == "USD":
+        if impact == "High":
+            return True
+        if has_keyword(t, USD_RED_NEWS):
+            return True
+        if has_keyword(t, MEDIUM_GOLD_NEWS):
+            return True
+        return False
+
+    # Tin ngoài USD chỉ lấy tin high hoặc các tin chính
     if impact == "High":
         return True
 
-    if country == "USD":
-        return any(k in title_upper for k in USD_NEWS)
-
     if country in ["JPY", "CNY", "AUD"]:
-        return any(k in title_upper for k in ASIA_NEWS)
+        return has_keyword(t, ["BOJ", "RBA", "CPI", "GDP", "PMI", "CAIXIN", "EMPLOYMENT"])
 
     if country in ["EUR", "GBP", "CHF"]:
-        return any(k in title_upper for k in EUROPE_NEWS)
+        return has_keyword(t, ["ECB", "BOE", "CPI", "GDP", "PMI", "LAGARDE", "RATE"])
 
     if country == "CAD":
-        return "EMPLOYMENT" in title_upper or "GDP" in title_upper or "CPI" in title_upper
+        return has_keyword(t, ["CPI", "GDP", "EMPLOYMENT", "RETAIL SALES"])
 
     return False
 
-def impact_mark(impact, title, country):
-    if is_gold_news(country, title, impact):
-        return "🔴"
-    if impact == "Medium":
-        return "🟡"
-    return "⚪"
+def event_strength(country, title, impact):
+    t = title.upper()
 
-def session_name(dt):
-    h = dt.hour
+    if country == "USD" and has_keyword(t, USD_RED_NEWS):
+        return "🔴", "CỰC MẠNH"
 
-    if 7 <= h < 16:
-        return "🌏 Phiên Á"
-    if 16 <= h < 21:
-        return "🇬🇧 Phiên Âu"
-    if 21 <= h or h < 2:
-        return "🇺🇸 Phiên Mỹ"
-    return "🌙 Thanh khoản yếu"
+    if country == "USD" and impact == "High":
+        return "🔴", "CỰC MẠNH"
+
+    if impact == "High":
+        return "🟡", "MẠNH"
+
+    if has_keyword(t, MEDIUM_GOLD_NEWS):
+        return "🟡", "VỪA"
+
+    return "⚪", "NHẸ"
+
+# =====================================================
+# NHẬN ĐỊNH VÀNG
+# =====================================================
 
 def gold_before_note(country, title):
     t = title.upper()
 
     if country == "USD":
-        if any(k in t for k in SELL_GOLD_IF_HIGHER):
+        if has_keyword(t, SELL_GOLD_IF_HIGHER):
             return """📌 <b>Kịch bản XAUUSD</b>
 Actual > Forecast → USD mạnh → SELL GOLD
 Actual < Forecast → USD yếu → BUY GOLD"""
 
-        if any(k in t for k in BUY_GOLD_IF_HIGHER):
+        if has_keyword(t, BUY_GOLD_IF_HIGHER):
             return """📌 <b>Kịch bản XAUUSD</b>
 Actual > Forecast → USD yếu → BUY GOLD
 Actual < Forecast → USD mạnh → SELL GOLD"""
 
-        if "FOMC" in t or "FED" in t or "POWELL" in t:
+        if has_keyword(t, ["FOMC", "FED", "POWELL"]):
             return """📌 <b>Kịch bản XAUUSD</b>
 Fed hawkish / nói cứng → SELL GOLD
 Fed dovish / nói mềm → BUY GOLD"""
 
+        return """📌 <b>Kịch bản XAUUSD</b>
+Tin USD mạnh hơn dự báo → thường SELL GOLD
+Tin USD yếu hơn dự báo → thường BUY GOLD"""
+
     if country in ["JPY", "CNY", "AUD"]:
         return """📌 <b>Phiên Á</b>
-Tin Á mạnh có thể làm vàng quét mạnh.
-Ưu tiên chờ phản ứng giá, không vào trước tin."""
+Tin Á có thể làm vàng quét thanh khoản.
+Không vào trước tin, chờ phản ứng giá."""
 
     if country in ["EUR", "GBP", "CHF"]:
         return """📌 <b>Phiên Âu</b>
-Tin Âu mạnh có thể làm thị trường biến động trước phiên Mỹ.
-Chờ sweep + CHOCH rồi mới vào."""
+Tin Âu có thể tạo sóng trước phiên Mỹ.
+Chờ Sweep + CHOCH rồi mới vào."""
 
     if country == "CAD":
         return """📌 <b>Tin CAD</b>
-Có thể ảnh hưởng USD gián tiếp.
-Theo dõi phản ứng vàng trên M5/M15."""
+Ảnh hưởng gián tiếp tới USD.
+Theo dõi phản ứng XAUUSD trên M5/M15."""
 
     return "📌 XAUUSD: chờ tin ra, không vào lệnh trước tin."
 
@@ -168,14 +280,14 @@ def gold_after_result(country, title, actual, forecast):
     if a is None or f is None:
         return "🥇 XAUUSD: chưa đủ dữ liệu Actual/Forecast để kết luận."
 
-    if any(k in t for k in SELL_GOLD_IF_HIGHER):
+    if has_keyword(t, SELL_GOLD_IF_HIGHER):
         if a > f:
             return "🥇 XAUUSD: Actual cao hơn Forecast → USD mạnh → ưu tiên SELL GOLD"
         if a < f:
             return "🥇 XAUUSD: Actual thấp hơn Forecast → USD yếu → ưu tiên BUY GOLD"
         return "🥇 XAUUSD: Actual bằng Forecast → chờ phản ứng giá."
 
-    if any(k in t for k in BUY_GOLD_IF_HIGHER):
+    if has_keyword(t, BUY_GOLD_IF_HIGHER):
         if a > f:
             return "🥇 XAUUSD: thất nghiệp cao hơn dự báo → USD yếu → ưu tiên BUY GOLD"
         if a < f:
@@ -184,9 +296,14 @@ def gold_after_result(country, title, actual, forecast):
 
     return "🥇 XAUUSD: cần xem phản ứng nến M5/M15."
 
+# =====================================================
+# LẤY DỮ LIỆU
+# =====================================================
+
 def load_events():
     r = requests.get(CALENDAR_URL, timeout=20)
     r.raise_for_status()
+
     root = ET.fromstring(r.content)
 
     today = now_jst().date()
@@ -204,11 +321,16 @@ def load_events():
 
         dt = parse_date(date_text, time_text)
 
-        if dt is None or dt.date() != today:
+        if dt is None:
+            continue
+
+        if dt.date() != today:
             continue
 
         if not is_gold_news(country, title, impact):
             continue
+
+        mark, strength = event_strength(country, title, impact)
 
         events.append({
             "dt": dt,
@@ -219,11 +341,16 @@ def load_events():
             "forecast": forecast,
             "previous": previous,
             "actual": actual,
-            "mark": impact_mark(impact, title, country),
-            "session": session_name(dt)
+            "mark": mark,
+            "strength": strength,
+            "session": session_name(dt, country)
         })
 
     return sorted(events, key=lambda x: x["dt"])
+
+# =====================================================
+# BÁO CÁO HẰNG NGÀY
+# =====================================================
 
 def daily_report(events):
     today = now_jst().strftime("%Y-%m-%d")
@@ -240,7 +367,7 @@ Nếu là cuối tuần thì sàn vàng nghỉ."""
         "🥇 <b>TIN VÀNG XAUUSD HÔM NAY</b>",
         f"Ngày: {today}",
         "",
-        "🔴 Tin mạnh | 🟡 Tin vừa | ⚪ Tin nhẹ",
+        "🔴 Cực mạnh | 🟡 Mạnh/Vừa | ⚪ Nhẹ",
         ""
     ]
 
@@ -251,80 +378,4 @@ Nếu là cuối tuần thì sàn vàng nghỉ."""
             current_session = e["session"]
             lines.append(f"<b>{current_session}</b>")
 
-        lines.append(f"{e['mark']} <b>{e['time']}</b> | {e['country']} | {e['title']}")
-        lines.append(f"Actual: {e['actual'] or '-'} | Forecast: {e['forecast'] or '-'} | Previous: {e['previous'] or '-'}")
-        lines.append(gold_before_note(e["country"], e["title"]))
-        lines.append("")
-
-    return "\n".join(lines)[:3900]
-
-def warning_report(events):
-    now = now_jst()
-    lines = []
-
-    for e in events:
-        diff = (e["dt"] - now).total_seconds() / 60
-
-        if 0 <= diff <= 35:
-            lines.append(f"""🚨 <b>SẮP CÓ TIN VÀNG</b>
-
-Còn khoảng {int(diff)} phút
-
-{e['session']}
-{e['country']} | {e['title']}
-Giờ: {e['time']}
-Forecast: {e['forecast'] or '-'}
-Previous: {e['previous'] or '-'}
-
-{gold_before_note(e['country'], e['title'])}
-
-⚠️ Không vào lệnh trước tin.
-Chờ tin ra 5–15 phút rồi xem Sweep + CHOCH.""")
-
-    return "\n\n".join(lines)
-
-def actual_report(events):
-    now = now_jst()
-    lines = []
-
-    for e in events:
-        diff = (now - e["dt"]).total_seconds() / 60
-
-        if 0 <= diff <= 90 and e["actual"]:
-            lines.append(f"""📊 <b>KẾT QUẢ TIN VÀNG</b>
-
-{e['session']}
-{e['country']} | {e['title']}
-Actual: {e['actual']}
-Forecast: {e['forecast'] or '-'}
-Previous: {e['previous'] or '-'}
-
-{gold_after_result(e['country'], e['title'], e['actual'], e['forecast'])}
-
-⚠️ Không vào market ngay cây đầu tiên.
-Chờ M5/M15 xác nhận hướng.""")
-
-    return "\n\n".join(lines)
-
-def main():
-    try:
-        events = load_events()
-
-        if MODE == "warning":
-            msg = warning_report(events)
-            if msg:
-                send(msg)
-
-        elif MODE == "actual":
-            msg = actual_report(events)
-            if msg:
-                send(msg)
-
-        else:
-            send(daily_report(events))
-
-    except Exception as e:
-        send(f"⚠️ Bot lỗi dữ liệu:\n{str(e)}")
-
-if __name__ == "__main__":
-    main()
+        lines.append(f"{e['mark']}
