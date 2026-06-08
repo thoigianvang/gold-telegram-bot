@@ -362,4 +362,22 @@ def main():
             else:
                 print("No warning message")
 
-        elif MOD
+        elif MODE == "actual":
+            msg = actual_report(events)
+            if msg:
+                send(msg)
+            else:
+                print("No actual message")
+
+        else:
+            msg = daily_report(events)
+            send(msg)
+
+    except Exception as e:
+        print("BOT ERROR:", str(e))
+        send(f"⚠️ Bot lỗi dữ liệu:\n{safe(str(e))}")
+        raise
+
+
+if __name__ == "__main__":
+    main()
