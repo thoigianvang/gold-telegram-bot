@@ -34,7 +34,7 @@ jobs:
           MODE: daily
 
   news-check:
-    if: github.event.schedule == '*/15 * * * *'
+    if: github.event.schedule == '*/5 * * * *'
 
     runs-on: ubuntu-latest
 
