@@ -1,7 +1,7 @@
 import os
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -110,6 +110,8 @@ def get_events():
         previous = previous.text.strip() if previous else "-"
         actual = actual.text.strip() if actual else "-"
 
+        jst_time = parse_event_time(date, time)
+
         if country == "USD" and impact == "High" and is_important(title):
             events.append({
                 "title": title,
@@ -118,22 +120,33 @@ def get_events():
                 "forecast": forecast,
                 "previous": previous,
                 "actual": actual,
-                "jst": parse_event_time(date, time),
+                "jst": jst_time,
             })
 
     return events
 
+def today_events(events):
+    now = datetime.now(JST).date()
+    return [e for e in events if e["jst"] and e["jst"].date() == now]
+
 def daily_report(events):
-    msg = "🔥 HIGH IMPACT USD - TIN ẢNH HƯỞNG VÀNG\n\n"
+    today = today_events(events)
+
+    msg = "🔥 HIGH IMPACT USD - TIN HÔM NAY ẢNH HƯỞNG VÀNG\n\n"
+
+    if not today:
+        msg += "⚪ Hôm nay không có tin USD High Impact quan trọng.\n"
+        msg += "Không nên ép lệnh theo tin."
+        send_telegram(msg)
+        return
+
     total = 0
 
-    for e in events[:12]:
+    for e in today:
         bias, score = gold_bias(e["title"], e["actual"], e["forecast"])
         total += score
 
-        jst_time = e["jst"].strftime("%m-%d %H:%M JST") if e["jst"] else f"{e['date']} {e['time']}"
-
-        msg += f"🇺🇸 {jst_time}\n"
+        msg += f"🇺🇸 {e['jst'].strftime('%m-%d %H:%M JST')}\n"
         msg += f"{e['title']}\n"
         msg += f"Actual: {e['actual']} | Forecast: {e['forecast']} | Previous: {e['previous']}\n"
         msg += f"{bias}\n"
@@ -153,6 +166,7 @@ def daily_report(events):
 
 def check_events(events):
     now = datetime.now(JST)
+    sent = 0
 
     for e in events:
         if not e["jst"]:
@@ -161,24 +175,46 @@ def check_events(events):
         minutes = (e["jst"] - now).total_seconds() / 60
         bias, score = gold_bias(e["title"], e["actual"], e["forecast"])
 
-        if 25 <= minutes <= 35:
+        if 28 <= minutes <= 32:
             msg = "🚨 30 PHÚT NỮA CÓ TIN MẠNH\n\n"
             msg += f"Tin: {e['title']}\n"
-            msg += f"Giờ: {e['jst'].strftime('%H:%M JST')}\n"
+            msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
             msg += f"Forecast: {e['forecast']}\n"
             msg += f"Previous: {e['previous']}\n\n"
             msg += "⚠️ XAUUSD có thể biến động mạnh. Không FOMO trước tin."
             send_telegram(msg)
+            sent += 1
 
-        if e["actual"] != "-" and abs(minutes) <= 10:
+        if 13 <= minutes <= 17:
+            msg = "⚠️ 15 PHÚT NỮA CÓ TIN MẠNH\n\n"
+            msg += f"Tin: {e['title']}\n"
+            msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
+            msg += f"Forecast: {e['forecast']}\n"
+            msg += f"Previous: {e['previous']}\n"
+            send_telegram(msg)
+            sent += 1
+
+        if 3 <= minutes <= 7:
+            msg = "🔥 5 PHÚT NỮA CÓ TIN MẠNH\n\n"
+            msg += f"Tin: {e['title']}\n"
+            msg += "⚠️ Hạn chế vào lệnh mới. Chờ Actual."
+            send_telegram(msg)
+            sent += 1
+
+        if e["actual"] != "-" and -10 <= minutes <= 10:
             msg = "🔥 USD NEWS RELEASE\n\n"
             msg += f"Tin: {e['title']}\n"
+            msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
             msg += f"Actual: {e['actual']}\n"
             msg += f"Forecast: {e['forecast']}\n"
             msg += f"Previous: {e['previous']}\n\n"
             msg += f"{bias}\n"
             msg += f"Gold Score: {score}"
             send_telegram(msg)
+            sent += 1
+
+    if sent == 0:
+        print("No alert now.")
 
 try:
     events = get_events()
