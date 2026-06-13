@@ -1,32 +1,55 @@
-name: Gold Telegram Bot
+name: Gold Intelligence Bot
 
 on:
   workflow_dispatch:
-  schedule:
-    # 07:00 JST mỗi ngày = 22:00 UTC hôm trước
-    - cron: "0 22 * * *"
 
-    # Mỗi 15 phút
-    - cron: "*/15 * * * *"
+  schedule:
+    # 07:00 JST mỗi ngày
+    - cron: '0 22 * * *'
+
+    # Kiểm tra mỗi 15 phút
+    - cron: '*/15 * * * *'
 
 jobs:
-  gold-news:
+
+  daily-news:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
+
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt
 
-      - name: Run bot
+      - name: Daily Gold News
         run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          MODE: daily
+
+  news-check:
+    if: github.event.schedule == '*/15 * * * *'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - name: Check News
+        run: python main.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          MODE: check
