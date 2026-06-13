@@ -16,32 +16,32 @@ try:
     soup = BeautifulSoup(xml, "xml")
     events = soup.find_all("event")
 
-    message = "🔥 TIN USD QUAN TRỌNG TUẦN NÀY\n\n"
+    message = "🔥 HIGH IMPACT USD - TIN ẢNH HƯỞNG VÀNG\n\n"
     count = 0
 
     for event in events:
-        currency = event.find("country")
-        impact = event.find("impact")
-        title = event.find("title")
-        date = event.find("date")
-        time = event.find("time")
-        forecast = event.find("forecast")
-        previous = event.find("previous")
-        actual = event.find("actual")
+        currency_tag = event.find("country")
+        impact_tag = event.find("impact")
+        title_tag = event.find("title")
+        date_tag = event.find("date")
+        time_tag = event.find("time")
+        forecast_tag = event.find("forecast")
+        previous_tag = event.find("previous")
+        actual_tag = event.find("actual")
 
-        currency = currency.text.strip() if currency else ""
-        impact = impact.text.strip() if impact else ""
-        title = title.text.strip() if title else ""
-        date = date.text.strip() if date else ""
-        time = time.text.strip() if time else ""
-        forecast = forecast.text.strip() if forecast else "-"
-        previous = previous.text.strip() if previous else "-"
-        actual = actual.text.strip() if actual else "-"
+        currency = currency_tag.text.strip() if currency_tag else ""
+        impact = impact_tag.text.strip() if impact_tag else ""
+        title = title_tag.text.strip() if title_tag else ""
+        date = date_tag.text.strip() if date_tag else ""
+        time = time_tag.text.strip() if time_tag else ""
+        forecast = forecast_tag.text.strip() if forecast_tag else "-"
+        previous = previous_tag.text.strip() if previous_tag else "-"
+        actual = actual_tag.text.strip() if actual_tag else "-"
 
-        if currency == "USD":
+        if currency == "USD" and impact == "High":
             message += f"🇺🇸 {date} {time}\n"
             message += f"{title}\n"
-            message += f"Impact: {impact}\n"
+            message += f"Impact: 🔴 High\n"
             message += f"Actual: {actual} | Forecast: {forecast} | Previous: {previous}\n\n"
             count += 1
 
@@ -49,7 +49,7 @@ try:
             break
 
     if count == 0:
-        message += f"⚠️ Không tìm thấy tin USD.\nSố event đọc được: {len(events)}"
+        message += "⚠️ Tuần này chưa tìm thấy tin USD High Impact.\n"
 
     send_telegram(message)
 
