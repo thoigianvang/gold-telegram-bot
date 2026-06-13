@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -9,6 +10,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
 
 URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
+STATE_FILE = "sent.json"
 
 NY = ZoneInfo("America/New_York")
 JST = ZoneInfo("Asia/Tokyo")
@@ -22,6 +24,23 @@ IMPORTANT = [
     "Unemployment",
     "Retail Sales",
 ]
+
+def load_state():
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_state(state):
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+def already_sent(state, key):
+    return state.get(key) is True
+
+def mark_sent(state, key):
+    state[key] = True
 
 def send_telegram(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -49,8 +68,7 @@ def to_number(v):
 def parse_event_time(date_str, time_str):
     try:
         dt = datetime.strptime(f"{date_str} {time_str}", "%m-%d-%Y %I:%M%p")
-        dt_ny = dt.replace(tzinfo=NY)
-        return dt_ny.astimezone(JST)
+        return dt.replace(tzinfo=NY).astimezone(JST)
     except:
         return None
 
@@ -85,6 +103,9 @@ def gold_bias(title, actual, forecast):
             return "🔴 SELL GOLD - thất nghiệp thấp", -2
 
     return "⚪ WAIT / NO TRADE", 0
+
+def event_key(e):
+    return f"{e['title']}_{e['date']}_{e['time']}"
 
 def get_events():
     xml = requests.get(URL, timeout=20).text
@@ -126,11 +147,16 @@ def get_events():
     return events
 
 def today_events(events):
-    now = datetime.now(JST).date()
-    return [e for e in events if e["jst"] and e["jst"].date() == now]
+    today = datetime.now(JST).date()
+    return [e for e in events if e["jst"] and e["jst"].date() == today]
 
-def daily_report(events):
+def daily_report(events, state):
     today = today_events(events)
+    today_key = f"daily_{datetime.now(JST).strftime('%Y-%m-%d')}"
+
+    if already_sent(state, today_key):
+        print("Daily report already sent.")
+        return
 
     msg = "🔥 HIGH IMPACT USD - TIN HÔM NAY ẢNH HƯỞNG VÀNG\n\n"
 
@@ -138,6 +164,7 @@ def daily_report(events):
         msg += "⚪ Hôm nay không có tin USD High Impact quan trọng.\n"
         msg += "Không nên ép lệnh theo tin."
         send_telegram(msg)
+        mark_sent(state, today_key)
         return
 
     total = 0
@@ -163,68 +190,78 @@ def daily_report(events):
         msg += "⚪ Kết luận: WAIT / NO TRADE"
 
     send_telegram(msg)
+    mark_sent(state, today_key)
 
-def check_events(events):
+def check_events(events, state):
     now = datetime.now(JST)
-    sent = 0
 
     for e in events:
         if not e["jst"]:
             continue
 
         minutes = (e["jst"] - now).total_seconds() / 60
-        bias, score = gold_bias(e["title"], e["actual"], e["forecast"])
+        key_base = event_key(e)
 
         if 28 <= minutes <= 32:
-            msg = "🚨 30 PHÚT NỮA CÓ TIN MẠNH\n\n"
-            msg += f"Tin: {e['title']}\n"
-            msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
-            msg += f"Forecast: {e['forecast']}\n"
-            msg += f"Previous: {e['previous']}\n\n"
-            msg += "⚠️ XAUUSD có thể biến động mạnh. Không FOMO trước tin."
-            send_telegram(msg)
-            sent += 1
+            key = f"warn30_{key_base}"
+            if not already_sent(state, key):
+                msg = "🚨 30 PHÚT NỮA CÓ TIN MẠNH\n\n"
+                msg += f"Tin: {e['title']}\n"
+                msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
+                msg += f"Forecast: {e['forecast']}\n"
+                msg += f"Previous: {e['previous']}\n\n"
+                msg += "⚠️ XAUUSD có thể biến động mạnh. Không FOMO trước tin."
+                send_telegram(msg)
+                mark_sent(state, key)
 
         if 13 <= minutes <= 17:
-            msg = "⚠️ 15 PHÚT NỮA CÓ TIN MẠNH\n\n"
-            msg += f"Tin: {e['title']}\n"
-            msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
-            msg += f"Forecast: {e['forecast']}\n"
-            msg += f"Previous: {e['previous']}\n"
-            send_telegram(msg)
-            sent += 1
+            key = f"warn15_{key_base}"
+            if not already_sent(state, key):
+                msg = "⚠️ 15 PHÚT NỮA CÓ TIN MẠNH\n\n"
+                msg += f"Tin: {e['title']}\n"
+                msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
+                msg += f"Forecast: {e['forecast']}\n"
+                msg += f"Previous: {e['previous']}\n"
+                send_telegram(msg)
+                mark_sent(state, key)
 
         if 3 <= minutes <= 7:
-            msg = "🔥 5 PHÚT NỮA CÓ TIN MẠNH\n\n"
-            msg += f"Tin: {e['title']}\n"
-            msg += "⚠️ Hạn chế vào lệnh mới. Chờ Actual."
-            send_telegram(msg)
-            sent += 1
+            key = f"warn5_{key_base}"
+            if not already_sent(state, key):
+                msg = "🔥 5 PHÚT NỮA CÓ TIN MẠNH\n\n"
+                msg += f"Tin: {e['title']}\n"
+                msg += "⚠️ Hạn chế vào lệnh mới. Chờ Actual."
+                send_telegram(msg)
+                mark_sent(state, key)
 
-        if e["actual"] != "-" and -10 <= minutes <= 10:
-            msg = "🔥 USD NEWS RELEASE\n\n"
-            msg += f"Tin: {e['title']}\n"
-            msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
-            msg += f"Actual: {e['actual']}\n"
-            msg += f"Forecast: {e['forecast']}\n"
-            msg += f"Previous: {e['previous']}\n\n"
-            msg += f"{bias}\n"
-            msg += f"Gold Score: {score}"
-            send_telegram(msg)
-            sent += 1
+        if e["actual"] != "-" and -10 <= minutes <= 15:
+            key = f"actual_{key_base}_{e['actual']}"
+            if not already_sent(state, key):
+                bias, score = gold_bias(e["title"], e["actual"], e["forecast"])
 
-    if sent == 0:
-        print("No alert now.")
+                msg = "🔥 USD NEWS RELEASE\n\n"
+                msg += f"Tin: {e['title']}\n"
+                msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
+                msg += f"Actual: {e['actual']}\n"
+                msg += f"Forecast: {e['forecast']}\n"
+                msg += f"Previous: {e['previous']}\n\n"
+                msg += f"{bias}\n"
+                msg += f"Gold Score: {score}"
+                send_telegram(msg)
+                mark_sent(state, key)
 
 try:
+    state = load_state()
     events = get_events()
 
     if MODE == "daily":
-        daily_report(events)
+        daily_report(events, state)
     elif MODE == "check":
-        check_events(events)
+        check_events(events, state)
     else:
         send_telegram(f"⚠️ MODE lỗi: {MODE}")
+
+    save_state(state)
 
 except Exception as e:
     send_telegram(f"❌ ERROR\n{e}")
