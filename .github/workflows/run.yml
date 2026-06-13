@@ -1,45 +1,32 @@
-name: Gold News Bot
+name: Gold Telegram Bot
 
 on:
-  schedule:
-    - cron: '0 22 * * *'      # 07:00 JST báo lịch tin hôm nay
-    - cron: '*/15 * * * *'    # Mỗi 15 phút kiểm tra cảnh báo + actual
-
   workflow_dispatch:
+  schedule:
+    # 07:00 JST mỗi ngày = 22:00 UTC hôm trước
+    - cron: "0 22 * * *"
+
+    # Mỗi 15 phút
+    - cron: "*/15 * * * *"
 
 jobs:
   gold-news:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install requests
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - name: Daily Report
-        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
+      - name: Run bot
         run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: daily
-
-      - name: Warning Report
-        if: github.event_name == 'schedule'
-        run: python main.py
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: warning
-
-      - name: Actual Report
-        if: github.event_name == 'schedule'
-        run: python main.py
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: actual
