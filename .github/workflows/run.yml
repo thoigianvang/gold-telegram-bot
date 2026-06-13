@@ -7,8 +7,8 @@ on:
     # 07:00 JST mỗi ngày
     - cron: '0 22 * * *'
 
-    # Kiểm tra mỗi 15 phút
-    - cron: '*/15 * * * *'
+    # Kiểm tra mỗi 5 phút
+    - cron: '*/5 * * * *'
 
 jobs:
 
