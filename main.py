@@ -147,8 +147,20 @@ def get_events():
     return events
 
 def today_events(events):
-    today = datetime.now(JST).date()
-    return [e for e in events if e["jst"] and e["jst"].date() == today]
+    result = []
+
+    now = datetime.now(JST)
+
+    for e in events:
+        if not e["jst"]:
+            continue
+
+        diff = (e["jst"] - now).total_seconds()
+
+        if -86400 <= diff <= 86400 * 3:
+            result.append(e)
+
+    return result
 
 def daily_report(events, state):
     today = today_events(events)
