@@ -10,8 +10,8 @@ on:
     # 07:00 JST = 22:00 UTC
     - cron: '0 22 * * *'
 
-    # Check news mỗi 30 phút
-    - cron: '*/30 * * * *'
+    # Check news mỗi 15 phút
+    - cron: '*/15 * * * *'
 
 jobs:
   daily-news:
