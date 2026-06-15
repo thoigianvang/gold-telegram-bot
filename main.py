@@ -378,21 +378,22 @@ def main():
     print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
 
     if MODE == "daily":
+    daily_report(events, state)
 
-        daily_report(events, state)
+elif MODE == "check":
+    check_events(events, state)
 
-    elif MODE == "check":
+elif MODE == "test":
+    manual_test(events, state)
 
-        check_events(events, state)
+elif MODE == "news":
+    gold_news_update(state)
 
-    elif MODE == "test":
+elif MODE == "bias":
+    daily_gold_bias(events, state)
 
-        manual_test(events, state)
-
-    else:
-
-        send_telegram(f"⚠️ MODE lỗi: {MODE}")
-
+else:
+    send_telegram(f"⚠️ MODE lỗi: {MODE}")
     save_state(state)
 
 try:
