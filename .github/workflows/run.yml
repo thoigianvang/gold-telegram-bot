@@ -7,12 +7,15 @@ on:
   workflow_dispatch:
 
   schedule:
+    # 07:00 JST = 22:00 UTC
     - cron: '0 22 * * *'
-    - cron: '*/5 * * * *'
+
+    # Check news mỗi 30 phút
+    - cron: '*/30 * * * *'
 
 jobs:
   daily-news:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 22 * * *'
+    if: github.event.schedule == '0 22 * * *'
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +43,7 @@ jobs:
           git push
 
   news-check:
-    if: github.event.schedule == '*/5 * * * *'
+    if: github.event.schedule == '*/30 * * * *'
     runs-on: ubuntu-latest
 
     steps:
@@ -58,6 +61,34 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
           MODE: check
+
+      - name: Save state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add sent.json
+          git commit -m "Update sent state" || echo "No changes"
+          git push
+
+  manual-test:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - name: Manual Test
+        run: python main.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          MODE: daily
 
       - name: Save state
         run: |
