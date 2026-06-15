@@ -471,145 +471,155 @@ def gold_news_update(state, force=False):
     mark_sent(state, key)
 
 def daily_gold_bias(events, state, force=False):
-
     today = datetime.now(JST).strftime("%Y-%m-%d")
-
     key = f"daily_gold_bias_{today}"
 
     if not force and already_sent(state, key):
-
         print("Daily gold bias already sent.")
-
         return
 
     selected_events = target_events(events)
-
     news = get_gold_news(limit=6)
 
     economic_score = 0
-
     news_score = 0
-
     fomc_risk = False
 
-    high_risk_events = []
-
     for e in selected_events:
-
         bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
-
         economic_score += score
 
         title_l = e["title"].lower()
 
         if "fomc" in title_l or "federal funds" in title_l or "powell" in title_l:
-
             fomc_risk = True
 
-            high_risk_events.append(e)
-
     for item in news:
-
         news_score += item["score"]
 
     total_score = economic_score + news_score
 
-    msg = "📊 GOLD DAILY PLAN - KẾ HOẠCH VÀNG TRONG NGÀY\n\n"
+    if fomc_risk:
+        risk_level = "VERY HIGH"
+    elif abs(total_score) >= 5:
+        risk_level = "HIGH"
+    elif abs(total_score) >= 3:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "LOW"
 
-    msg += f"🕒 Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n\n"
+    if fomc_risk:
+        buy_prob = 50
+        sell_prob = 50
+        primary_bias = "WAIT BEFORE FOMC"
+        bias_icon = "⚪"
+    else:
+        if total_score >= 5:
+            buy_prob = 75
+            sell_prob = 25
+            primary_bias = "BUY GOLD BIAS"
+            bias_icon = "🟢"
+        elif total_score >= 2:
+            buy_prob = 60
+            sell_prob = 40
+            primary_bias = "BUY GOLD nhẹ"
+            bias_icon = "🟢"
+        elif total_score <= -5:
+            buy_prob = 25
+            sell_prob = 75
+            primary_bias = "SELL GOLD BIAS"
+            bias_icon = "🔴"
+        elif total_score <= -2:
+            buy_prob = 40
+            sell_prob = 60
+            primary_bias = "SELL GOLD nhẹ"
+            bias_icon = "🔴"
+        else:
+            buy_prob = 50
+            sell_prob = 50
+            primary_bias = "WAIT / NO CLEAR EDGE"
+            bias_icon = "⚪"
 
-    msg += "1️⃣ LỊCH TIN USD HIGH IMPACT\n"
+    msg = "📊 GOLD DAILY INTELLIGENCE V4\n\n"
+    msg += f"🕒 Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
+    msg += f"⚠️ Risk Level: {risk_level}\n\n"
+    msg += "══════════════════════\n\n"
+
+    msg += "1️⃣ HIGH IMPACT EVENTS\n\n"
 
     if not selected_events:
-
         msg += "⚪ Không có tin USD High Impact quan trọng trong khung gần.\n\n"
-
     else:
-
         for e in selected_events:
-
             bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
 
-            msg += f"🇺🇸 {e['jst'].strftime('%m-%d %H:%M JST')} - {e['title']}\n"
-
+            msg += f"🇺🇸 {e['title']}\n"
+            msg += f"Time: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
             msg += f"Forecast: {e['forecast']} | Previous: {e['previous']} | Actual: {e['actual']}\n"
+            msg += f"Impact: {bias}\n"
+            msg += f"Score: {score}\n\n"
 
-            msg += f"{bias}\n\n"
-
-    msg += "2️⃣ TIN TỨC ẢNH HƯỞNG VÀNG\n"
+    msg += "══════════════════════\n\n"
+    msg += "2️⃣ GOLD MARKET NEWS\n\n"
 
     if not news:
-
         msg += "⚪ Chưa lấy được headline mới.\n\n"
-
     else:
-
         for item in news[:5]:
-
             if item["score"] > 0:
-
                 icon = "🟢"
-
+                impact = "Bullish Gold"
             elif item["score"] < 0:
-
                 icon = "🔴"
-
+                impact = "Bearish Gold"
             else:
-
                 icon = "⚪"
+                impact = "Neutral"
 
-            msg += f"{icon} {item['vi_title']}\n"
+            title_show = item.get("vi_title", item.get("title", ""))
 
-        msg += "\n"
+            msg += f"{icon} {title_show}\n"
+            msg += f"Impact: {impact}\n\n"
 
-    msg += "3️⃣ NHẬN ĐỊNH XU HƯỚNG TRONG NGÀY\n"
-
+    msg += "══════════════════════\n\n"
+    msg += "3️⃣ MARKET BIAS ENGINE\n\n"
     msg += f"Economic Score: {economic_score}\n"
-
     msg += f"News Score: {news_score}\n"
+    msg += "Dollar Score: Chưa thêm\n"
+    msg += "Yield Score: Chưa thêm\n"
+    msg += f"Total Gold Score: {total_score}\n\n"
 
-    msg += f"Total Bias Score: {total_score}\n"
+    msg += f"🟢 BUY Probability: {buy_prob}%\n"
+    msg += f"🔴 SELL Probability: {sell_prob}%\n\n"
 
-    if fomc_risk:
-
-        msg += "🔥 FOMC Risk: HIGH\n"
-
-    else:
-
-        msg += "FOMC Risk: Normal\n"
-
-    msg += "\n"
+    msg += "══════════════════════\n\n"
+    msg += "4️⃣ TODAY BIAS\n\n"
+    msg += f"{bias_icon} Primary Bias: {primary_bias}\n\n"
 
     if fomc_risk:
-
-        msg += "⚪ Kết luận: WAIT trước FOMC.\n"
-
-        msg += "Không ép BUY/SELL trước tin lớn.\n"
-
-        msg += "Kịch bản:\n"
-
-        msg += "- Fed hawkish / USD mạnh / lợi suất tăng → SELL GOLD bias\n"
-
-        msg += "- Fed dovish / USD yếu / lợi suất giảm → BUY GOLD bias\n"
-
+        msg += "Kịch bản FOMC:\n"
+        msg += "- Fed phát tín hiệu diều hâu / USD mạnh / lợi suất tăng → SELL GOLD bias\n"
+        msg += "- Fed phát tín hiệu bồ câu / USD yếu / lợi suất giảm → BUY GOLD bias\n"
+        msg += "- Trước FOMC: ưu tiên WAIT, không ép lệnh.\n"
     else:
-
-        if total_score >= 4:
-
-            msg += "🟢 Kết luận: BUY GOLD BIAS trong ngày\n"
-
-        elif total_score <= -4:
-
-            msg += "🔴 Kết luận: SELL GOLD BIAS trong ngày\n"
-
+        if total_score >= 2:
+            msg += "Kịch bản ưu tiên:\n"
+            msg += "- Chờ giá hồi về hỗ trợ rồi tìm BUY theo xác nhận nến.\n"
+            msg += "- Không BUY đuổi khi nến đã giật mạnh.\n"
+        elif total_score <= -2:
+            msg += "Kịch bản ưu tiên:\n"
+            msg += "- Chờ giá hồi lên kháng cự rồi tìm SELL theo xác nhận nến.\n"
+            msg += "- Không SELL đuổi khi giá đã rơi mạnh.\n"
         else:
+            msg += "Kịch bản ưu tiên:\n"
+            msg += "- Đứng ngoài nếu không có setup rõ.\n"
+            msg += "- Chỉ vào lệnh khi có xác nhận từ giá.\n"
 
-            msg += "⚪ Kết luận: WAIT / SIDEWAY / chưa đủ xác suất\n"
-
-    msg += "\n⚠️ Luật vận hành: Chỉ xem đây là bias. Vào lệnh cần thêm phản ứng giá, spread và nến xác nhận."
+    msg += "\n══════════════════════\n"
+    msg += "⚠️ Đây là mô hình bias, không phải lệnh vào trực tiếp.\n"
+    msg += "Cần thêm phản ứng giá, spread và nến xác nhận."
 
     send_telegram(msg)
-
     mark_sent(state, key)
 
 def check_events(events, state):
