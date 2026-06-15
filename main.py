@@ -469,7 +469,54 @@ def gold_news_update(state, force=False):
 
     send_telegram(msg)
     mark_sent(state, key)
+def score_dollar_news(news):
 
+    score = 0
+
+    for item in news:
+
+        t = item["title"].lower()
+
+        if "dollar rises" in t:
+            score -= 2
+
+        elif "strong dollar" in t:
+            score -= 2
+
+        elif "dollar gains" in t:
+            score -= 2
+
+        elif "dollar weakens" in t:
+            score += 2
+
+        elif "weak dollar" in t:
+            score += 2
+
+    return score
+def score_yield_news(news):
+
+    score = 0
+
+    for item in news:
+
+        t = item["title"].lower()
+
+        if "yield rises" in t:
+            score -= 2
+
+        elif "treasury yields rise" in t:
+            score -= 2
+
+        elif "bond yields rise" in t:
+            score -= 2
+
+        elif "yield falls" in t:
+            score += 2
+
+        elif "treasury yields fall" in t:
+            score += 2
+
+    return score
 def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
@@ -483,6 +530,8 @@ def daily_gold_bias(events, state, force=False):
 
     economic_score = 0
     news_score = 0
+    dollar_score = 0
+    yield_score = 0
     fomc_risk = False
 
     for e in selected_events:
@@ -496,8 +545,15 @@ def daily_gold_bias(events, state, force=False):
 
     for item in news:
         news_score += item["score"]
+        dollar_score = score_dollar_news(news)
+        yield_score = score_yield_news(news)
 
-    total_score = economic_score + news_score
+    total_score = (
+    economic_score
+    + news_score
+    + dollar_score
+    + yield_score
+)
 
     if fomc_risk:
         risk_level = "VERY HIGH"
@@ -585,8 +641,8 @@ def daily_gold_bias(events, state, force=False):
     msg += "3️⃣ MARKET BIAS ENGINE\n\n"
     msg += f"Economic Score: {economic_score}\n"
     msg += f"News Score: {news_score}\n"
-    msg += "Dollar Score: Chưa thêm\n"
-    msg += "Yield Score: Chưa thêm\n"
+    msg += f"Dollar Score: {dollar_score}\n"
+    msg += f"Yield Score: {yield_score}\n"
     msg += f"Total Gold Score: {total_score}\n\n"
 
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
