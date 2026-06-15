@@ -23,11 +23,7 @@ IMPORTANT = [
     "Powell",
     "Unemployment",
     "Retail Sales",
-    "GDP",
-    "ISM",
-    "PMI",
-    "JOLTS",
-    "ADP",
+    "GDP", "ISM", "PMI", "JOLTS", "ADP",
 ]
 
 
@@ -148,22 +144,14 @@ def gold_bias(title, actual, forecast):
     t = title.lower()
 
     inflation = [
-        "cpi",
-        "ppi",
-        "retail sales",
-        "interest rate",
-        "federal funds",
-        "gdp",
-        "ism",
-        "pmi",
+        "cpi", "ppi", "retail sales",
+        "interest rate", "federal funds",
+        "gdp", "ism", "pmi",
     ]
 
     jobs = [
-        "non-farm",
-        "nonfarm",
-        "nfp",
-        "adp",
-        "jolts",
+        "non-farm", "nonfarm", "nfp",
+        "adp", "jolts",
     ]
 
     if any(x in t for x in inflation):
@@ -207,17 +195,15 @@ def get_events():
         jst_time = parse_event_time(date, time)
 
         if country == "USD" and impact == "High" and is_important(title):
-            events.append(
-                {
-                    "title": title,
-                    "date": date,
-                    "time": time,
-                    "forecast": forecast,
-                    "previous": previous,
-                    "actual": actual,
-                    "jst": jst_time,
-                }
-            )
+            events.append({
+                "title": title,
+                "date": date,
+                "time": time,
+                "forecast": forecast,
+                "previous": previous,
+                "actual": actual,
+                "jst": jst_time,
+            })
 
     events.sort(key=lambda x: x["jst"] or datetime.max.replace(tzinfo=JST))
     return events
@@ -364,3 +350,63 @@ def check_events(events, state):
 
 
 def manual_test(events, state):
+
+    msg = "✅ BOT TEST OK\n\n"
+
+    msg += "MODE: test\n"
+
+    msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
+
+    msg += f"Events found: {len(events)}\n\n"
+
+    msg += "Nếu nhận được tin này thì Telegram + GitHub Actions đang hoạt động."
+
+    send_telegram(msg)
+
+    daily_report(events, state, force=True)
+
+def main():
+
+    state = load_state()
+
+    events = get_events()
+
+    print(f"MODE={MODE}")
+
+    print(f"EVENTS_FOUND={len(events)}")
+
+    print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
+
+    if MODE == "daily":
+
+        daily_report(events, state)
+
+    elif MODE == "check":
+
+        check_events(events, state)
+
+    elif MODE == "test":
+
+        manual_test(events, state)
+
+    else:
+
+        send_telegram(f"⚠️ MODE lỗi: {MODE}")
+
+    save_state(state)
+
+try:
+
+    main()
+
+except Exception as e:
+
+    print("ERROR:", str(e))
+
+    try:
+
+        send_telegram(f"❌ GOLD BOT ERROR\n\n{e}")
+
+    except Exception as send_error:
+
+        print("FAILED TO SEND ERROR:", str(send_error))
