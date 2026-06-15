@@ -477,23 +477,27 @@ def score_dollar_news(news):
 
         t = item["title"].lower()
 
-        if "dollar rises" in t:
-            score -= 2
+        if "dollar" in t:
 
-        elif "strong dollar" in t:
-            score -= 2
+            if (
+                "strong" in t
+                or "gains" in t
+                or "rises" in t
+                or "higher" in t
+                or "lift" in t
+            ):
+                score -= 2
 
-        elif "dollar gains" in t:
-            score -= 2
-
-        elif "dollar weakens" in t:
-            score += 2
-
-        elif "weak dollar" in t:
-            score += 2
+            elif (
+                "weak" in t
+                or "falls" in t
+                or "lower" in t
+                or "drops" in t
+            ):
+                score += 2
 
     return score
-def score_yield_news(news):
+    def score_yield_news(news):
 
     score = 0
 
@@ -501,20 +505,24 @@ def score_yield_news(news):
 
         t = item["title"].lower()
 
-        if "yield rises" in t:
-            score -= 2
+        if "yield" in t or "yields" in t:
 
-        elif "treasury yields rise" in t:
-            score -= 2
+            if (
+                "rise" in t
+                or "rises" in t
+                or "higher" in t
+                or "surge" in t
+                or "lift" in t
+            ):
+                score -= 2
 
-        elif "bond yields rise" in t:
-            score -= 2
-
-        elif "yield falls" in t:
-            score += 2
-
-        elif "treasury yields fall" in t:
-            score += 2
+            elif (
+                "fall" in t
+                or "falls" in t
+                or "lower" in t
+                or "drop" in t
+            ):
+                score += 2
 
     return score
 def daily_gold_bias(events, state, force=False):
