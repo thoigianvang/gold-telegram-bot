@@ -470,15 +470,12 @@ def gold_news_update(state, force=False):
     send_telegram(msg)
     mark_sent(state, key)
 def score_dollar_news(news):
-
     score = 0
 
     for item in news:
-
         t = item["title"].lower()
 
         if "dollar" in t:
-
             if (
                 "strong" in t
                 or "gains" in t
@@ -487,7 +484,6 @@ def score_dollar_news(news):
                 or "lift" in t
             ):
                 score -= 2
-
             elif (
                 "weak" in t
                 or "falls" in t
@@ -497,16 +493,13 @@ def score_dollar_news(news):
                 score += 2
 
     return score
-    def score_yield_news(news):
-
+def score_yield_news(news):
     score = 0
 
     for item in news:
-
         t = item["title"].lower()
 
         if "yield" in t or "yields" in t:
-
             if (
                 "rise" in t
                 or "rises" in t
@@ -515,7 +508,6 @@ def score_dollar_news(news):
                 or "lift" in t
             ):
                 score -= 2
-
             elif (
                 "fall" in t
                 or "falls" in t
