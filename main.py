@@ -304,13 +304,13 @@ def get_gold_news(limit=8):
                 score, reasons = score_news_title(title)
 
                 items.append({
-    "title": title,
-    "vi_title": translate_news_title_vi(title),
-    "pubDate": pub_date,
-    "link": link,
-    "score": score,
-    "reasons": reasons,
-})
+                    "title": title,
+                    "vi_title": translate_news_title_vi(title),
+                    "pubDate": pub_date,
+                    "link": link,
+                    "score": score,
+                    "reasons": reasons,
+                })
 
                 if len(items) >= limit:
                     return items
@@ -319,7 +319,6 @@ def get_gold_news(limit=8):
             print("NEWS FETCH ERROR:", query, str(e))
 
     return items
-
 
 def daily_report(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
@@ -375,17 +374,9 @@ def daily_report(events, state, force=False):
     mark_sent(state, daily_key)
 
 
-def gold_news_update(state, force=False):
-    now = datetime.now(JST)
-    key = f"gold_news_{now.strftime('%Y-%m-%d_%H')}"
-
-    if not force and already_sent(state, key):
-        print("Gold news update already sent.")
-        return
 def translate_news_title_vi(title):
-    t = title.lower()
-
     source = ""
+
     if " - " in title:
         parts = title.rsplit(" - ", 1)
         title_main = parts[0].strip()
@@ -396,99 +387,87 @@ def translate_news_title_vi(title):
     vi = title_main
 
     replacements = {
+        "Gold": "Vàng",
         "gold": "vàng",
         "silver": "bạc",
         "bitcoin": "Bitcoin",
         "traders": "nhà giao dịch",
-        "fed": "Fed",
+        "Fed": "Fed",
         "rate hike": "tăng lãi suất",
         "rate cut": "cắt giảm lãi suất",
-        "bets": "kỳ vọng",
         "dollar": "đồng USD",
         "yields": "lợi suất trái phiếu",
-        "treasury yields": "lợi suất trái phiếu Mỹ",
-        "surge": "tăng mạnh",
+        "Treasury yields": "lợi suất trái phiếu Mỹ",
         "falls": "giảm",
         "fall": "giảm",
+        "slips": "trượt giảm",
         "hits": "chạm",
         "low": "mức thấp",
         "high": "mức cao",
         "forecast": "dự báo",
-        "pressure": "gây áp lực",
-        "geopolitical": "địa chính trị",
-        "safe haven": "trú ẩn an toàn",
-        "inflation": "lạm phát",
+        "pressure": "áp lực",
+        "surge": "tăng mạnh",
         "hawkish": "diều hâu",
         "dovish": "bồ câu",
-        "fomc": "FOMC",
+        "FOMC": "FOMC",
     }
 
     for en, vn in replacements.items():
         vi = vi.replace(en, vn)
-        vi = vi.replace(en.title(), vn)
 
     if source:
         return f"{vi} - Nguồn: {source}"
 
     return vi
+
+
+def gold_news_update(state, force=False):
+    now = datetime.now(JST)
+    key = f"gold_news_{now.strftime('%Y-%m-%d_%H')}"
+
+    if not force and already_sent(state, key):
+        print("Gold news update already sent.")
+        return
+
     news = get_gold_news(limit=8)
 
     msg = "📰 GOLD NEWS UPDATE - TIN ẢNH HƯỞNG VÀNG\n\n"
-
     msg += f"🕒 Update: {now.strftime('%m-%d %H:%M JST')}\n\n"
 
     if not news:
-
         msg += "⚪ Chưa lấy được tin tức vàng mới.\n"
-
         msg += "Ưu tiên theo lịch USD High Impact và phản ứng giá."
-
         send_telegram(msg)
-
         mark_sent(state, key)
-
         return
 
     total = 0
 
     for i, item in enumerate(news, 1):
-
         total += item["score"]
 
         if item["score"] > 0:
-
             bias_icon = "🟢"
-
         elif item["score"] < 0:
-
             bias_icon = "🔴"
-
         else:
-
             bias_icon = "⚪"
 
-        msg += f"{i}. {bias_icon} {item['title']}\n"
+        msg += f"{i}. {bias_icon} {item['vi_title']}\n"
 
     msg += "\n----------------------\n"
-
     msg += f"📊 News Score: {total}\n"
 
     if total >= 3:
-
         msg += "🟢 News Bias: BUY GOLD nhẹ đến trung bình"
-
     elif total <= -3:
-
         msg += "🔴 News Bias: SELL GOLD nhẹ đến trung bình"
-
     else:
-
         msg += "⚪ News Bias: WAIT / chưa rõ"
 
     msg += "\n\n⚠️ Đây là bias theo tin tức, không phải lệnh vào trực tiếp."
 
     send_telegram(msg)
-
     mark_sent(state, key)
 
 def daily_gold_bias(events, state, force=False):
