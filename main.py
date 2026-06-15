@@ -558,7 +558,7 @@ def daily_gold_bias(events, state, force=False):
 
                 icon = "⚪"
 
-            msg += f"{icon} {item['title']}\n"
+            msg += f"{icon} {item['vi_title']}\n"
 
         msg += "\n"
 
