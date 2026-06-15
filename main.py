@@ -517,6 +517,28 @@ def score_yield_news(news):
                 score += 2
 
     return score
+def clamp_score(score, min_value=-4, max_value=4):
+    return max(min(score, max_value), min_value)
+
+
+def calculate_probability(total_score):
+    if total_score >= 12:
+        buy_prob = 90
+    elif total_score >= 8:
+        buy_prob = 80
+    elif total_score >= 4:
+        buy_prob = 65
+    elif total_score <= -12:
+        buy_prob = 10
+    elif total_score <= -8:
+        buy_prob = 20
+    elif total_score <= -4:
+        buy_prob = 35
+    else:
+        buy_prob = 50
+
+    sell_prob = 100 - buy_prob
+    return buy_prob, sell_prob
 def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
@@ -548,12 +570,18 @@ def daily_gold_bias(events, state, force=False):
         dollar_score = score_dollar_news(news)
         yield_score = score_yield_news(news)
 
+    news_score = clamp_score(news_score)
+    dollar_score = clamp_score(dollar_score)
+    yield_score = clamp_score(yield_score)
+
     total_score = (
     economic_score
     + news_score
     + dollar_score
     + yield_score
-)
+    )
+
+    buy_prob, sell_prob = calculate_probability(total_score)
 
     if fomc_risk:
         risk_level = "VERY HIGH"
@@ -563,12 +591,10 @@ def daily_gold_bias(events, state, force=False):
         risk_level = "MEDIUM"
     else:
         risk_level = "LOW"
-
+    buy_prob, sell_prob = calculate_probability(total_score)
     if fomc_risk:
-        buy_prob = 50
-        sell_prob = 50
-        primary_bias = "WAIT BEFORE FOMC"
-        bias_icon = "⚪"
+    primary_bias = "WAIT BEFORE FOMC"
+    bias_icon = "⚪"
     else:
         if total_score >= 5:
             buy_prob = 75
