@@ -30,6 +30,7 @@ IMPORTANT = [
     "ADP",
 ]
 
+
 def load_state():
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -38,21 +39,26 @@ def load_state():
     except Exception:
         return {}
 
+
 def save_state(state):
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
+
 def already_sent(state, key):
     return state.get(key) is True
 
+
 def mark_sent(state, key):
     state[key] = True
+
 
 def send_telegram(text):
     if not BOT_TOKEN or not CHAT_ID:
         raise RuntimeError("Missing BOT_TOKEN or CHAT_ID")
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
     r = requests.post(
         url,
         data={
@@ -68,15 +74,18 @@ def send_telegram(text):
     if r.status_code != 200:
         raise RuntimeError(f"Telegram send failed: {r.status_code} {r.text}")
 
-def is_important(title):
-    title_l = title.lower()
-    return any(k.lower() in title_l for k in IMPORTANT)
 
 def clean_value(v):
     if not v:
         return "-"
     v = v.strip()
     return v if v else "-"
+
+
+def is_important(title):
+    title_l = title.lower()
+    return any(k.lower() in title_l for k in IMPORTANT)
+
 
 def to_number(v):
     if not v or v == "-":
@@ -85,18 +94,22 @@ def to_number(v):
     try:
         x = (
             v.replace("%", "")
-             .replace(",", "")
-             .replace("K", "")
-             .replace("M", "")
-             .replace("B", "")
-             .strip()
+            .replace(",", "")
+            .replace("K", "")
+            .replace("M", "")
+            .replace("B", "")
+            .strip()
         )
         return float(x)
     except Exception:
         return None
 
+
 def parse_event_time(date_str, time_str):
-    if not date_str or not time_str or time_str.lower() in ["all day", "tentative"]:
+    if not date_str or not time_str:
+        return None
+
+    if time_str.lower() in ["all day", "tentative"]:
         return None
 
     formats = [
@@ -113,9 +126,17 @@ def parse_event_time(date_str, time_str):
 
     return None
 
+
 def event_key(e):
-    safe_title = e["title"].replace(" ", "_").replace("/", "_")
+    safe_title = (
+        e["title"]
+        .replace(" ", "_")
+        .replace("/", "_")
+        .replace(":", "_")
+        .replace(",", "")
+    )
     return f"{e['date']}_{e['time']}_{safe_title}"
+
 
 def gold_bias(title, actual, forecast):
     a = to_number(actual)
@@ -127,14 +148,22 @@ def gold_bias(title, actual, forecast):
     t = title.lower()
 
     inflation = [
-        "cpi", "ppi", "retail sales",
-        "interest rate", "federal funds",
-        "gdp", "ism", "pmi",
+        "cpi",
+        "ppi",
+        "retail sales",
+        "interest rate",
+        "federal funds",
+        "gdp",
+        "ism",
+        "pmi",
     ]
 
     jobs = [
-        "non-farm", "nonfarm", "nfp",
-        "adp", "jolts",
+        "non-farm",
+        "nonfarm",
+        "nfp",
+        "adp",
+        "jolts",
     ]
 
     if any(x in t for x in inflation):
@@ -157,6 +186,7 @@ def gold_bias(title, actual, forecast):
 
     return "⚪ WAIT / NO TRADE", 0
 
+
 def get_events():
     r = requests.get(URL, timeout=20)
     r.raise_for_status()
@@ -177,20 +207,23 @@ def get_events():
         jst_time = parse_event_time(date, time)
 
         if country == "USD" and impact == "High" and is_important(title):
-            events.append({
-                "title": title,
-                "date": date,
-                "time": time,
-                "forecast": forecast,
-                "previous": previous,
-                "actual": actual,
-                "jst": jst_time,
-            })
+            events.append(
+                {
+                    "title": title,
+                    "date": date,
+                    "time": time,
+                    "forecast": forecast,
+                    "previous": previous,
+                    "actual": actual,
+                    "jst": jst_time,
+                }
+            )
 
     events.sort(key=lambda x: x["jst"] or datetime.max.replace(tzinfo=JST))
     return events
 
-def today_and_next_events(events):
+
+def target_events(events):
     now = datetime.now(JST)
     result = []
 
@@ -200,28 +233,29 @@ def today_and_next_events(events):
 
         diff = (e["jst"] - now).total_seconds()
 
-        # Từ 6 tiếng trước tới 3 ngày tới
         if -6 * 3600 <= diff <= 3 * 86400:
             result.append(e)
 
     return result
 
-def daily_report(events, state, force=False):
-    today_key = f"daily_{datetime.now(JST).strftime('%Y-%m-%d')}"
 
-    if not force and already_sent(state, today_key):
+def daily_report(events, state, force=False):
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    daily_key = f"daily_{today}"
+
+    if not force and already_sent(state, daily_key):
         print("Daily report already sent.")
         return
 
-    selected = today_and_next_events(events)
+    selected = target_events(events)
 
     msg = "🔥 HIGH IMPACT USD - TIN ẢNH HƯỞNG VÀNG\n\n"
 
     if not selected:
-        no_news_key = f"no_news_{datetime.now(JST).strftime('%Y-%m-%d')}"
+        no_news_key = f"no_news_{today}"
 
         if not force and already_sent(state, no_news_key):
-            print("No-news message already sent.")
+            print("No-news already sent.")
             return
 
         msg += "⚪ Hiện chưa có tin USD High Impact quan trọng.\n"
@@ -230,7 +264,7 @@ def daily_report(events, state, force=False):
 
         send_telegram(msg)
         mark_sent(state, no_news_key)
-        mark_sent(state, today_key)
+        mark_sent(state, daily_key)
         return
 
     total = 0
@@ -256,7 +290,8 @@ def daily_report(events, state, force=False):
         msg += "⚪ Kết luận: WAIT / NO TRADE"
 
     send_telegram(msg)
-    mark_sent(state, today_key)
+    mark_sent(state, daily_key)
+
 
 def check_events(events, state):
     now = datetime.now(JST)
@@ -269,7 +304,6 @@ def check_events(events, state):
         minutes = (e["jst"] - now).total_seconds() / 60
         key_base = event_key(e)
 
-        # Cảnh báo 30 phút
         if 25 <= minutes <= 35:
             key = f"warn30_{key_base}"
             if not already_sent(state, key):
@@ -283,7 +317,6 @@ def check_events(events, state):
                 mark_sent(state, key)
                 sent_any = True
 
-        # Cảnh báo 15 phút
         if 10 <= minutes <= 20:
             key = f"warn15_{key_base}"
             if not already_sent(state, key):
@@ -297,7 +330,6 @@ def check_events(events, state):
                 mark_sent(state, key)
                 sent_any = True
 
-        # Cảnh báo 5 phút
         if 2 <= minutes <= 8:
             key = f"warn5_{key_base}"
             if not already_sent(state, key):
@@ -309,7 +341,6 @@ def check_events(events, state):
                 mark_sent(state, key)
                 sent_any = True
 
-        # Actual ra sau tin
         if e["actual"] != "-" and -30 <= minutes <= 30:
             key = f"actual_{key_base}_{e['actual']}"
             if not already_sent(state, key):
@@ -331,7 +362,5 @@ def check_events(events, state):
     if not sent_any:
         print("No alert to send now.")
 
+
 def manual_test(events, state):
-    msg = "✅ BOT TEST OK\n\n"
-    msg += f"MODE: test\n"
-    
