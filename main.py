@@ -304,12 +304,13 @@ def get_gold_news(limit=8):
                 score, reasons = score_news_title(title)
 
                 items.append({
-                    "title": title,
-                    "pubDate": pub_date,
-                    "link": link,
-                    "score": score,
-                    "reasons": reasons,
-                })
+    "title": title,
+    "vi_title": translate_news_title_vi(title),
+    "pubDate": pub_date,
+    "link": link,
+    "score": score,
+    "reasons": reasons,
+})
 
                 if len(items) >= limit:
                     return items
@@ -381,7 +382,55 @@ def gold_news_update(state, force=False):
     if not force and already_sent(state, key):
         print("Gold news update already sent.")
         return
+def translate_news_title_vi(title):
+    t = title.lower()
 
+    source = ""
+    if " - " in title:
+        parts = title.rsplit(" - ", 1)
+        title_main = parts[0].strip()
+        source = parts[1].strip()
+    else:
+        title_main = title.strip()
+
+    vi = title_main
+
+    replacements = {
+        "gold": "vàng",
+        "silver": "bạc",
+        "bitcoin": "Bitcoin",
+        "traders": "nhà giao dịch",
+        "fed": "Fed",
+        "rate hike": "tăng lãi suất",
+        "rate cut": "cắt giảm lãi suất",
+        "bets": "kỳ vọng",
+        "dollar": "đồng USD",
+        "yields": "lợi suất trái phiếu",
+        "treasury yields": "lợi suất trái phiếu Mỹ",
+        "surge": "tăng mạnh",
+        "falls": "giảm",
+        "fall": "giảm",
+        "hits": "chạm",
+        "low": "mức thấp",
+        "high": "mức cao",
+        "forecast": "dự báo",
+        "pressure": "gây áp lực",
+        "geopolitical": "địa chính trị",
+        "safe haven": "trú ẩn an toàn",
+        "inflation": "lạm phát",
+        "hawkish": "diều hâu",
+        "dovish": "bồ câu",
+        "fomc": "FOMC",
+    }
+
+    for en, vn in replacements.items():
+        vi = vi.replace(en, vn)
+        vi = vi.replace(en.title(), vn)
+
+    if source:
+        return f"{vi} - Nguồn: {source}"
+
+    return vi
     news = get_gold_news(limit=8)
 
     msg = "📰 GOLD NEWS UPDATE - TIN ẢNH HƯỞNG VÀNG\n\n"
