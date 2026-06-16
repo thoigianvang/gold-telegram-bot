@@ -890,28 +890,29 @@ def main():
 
     if MODE == "daily":
 
-        daily_report(events, state)
+    daily_report(events, state)
 
     elif MODE == "check":
 
-        check_events(events, state)
+    check_events(events, state)
 
     elif MODE == "test":
 
-        manual_test(events, state)
+    manual_test(events, state)
 
     elif MODE == "news":
 
-        gold_news_update(state)
+    gold_news_update(state)
 
     elif MODE == "bias":
 
-        daily_gold_bias(events, state)
+    daily_gold_bias(events, state)
 
-    else:
+else:
 
-        send_telegram(f"⚠️ MODE lỗi: {MODE}")
+    send_telegram(f"❌ Unknown MODE: {MODE}")
 
+    
     save_state(state)
 
 try:
