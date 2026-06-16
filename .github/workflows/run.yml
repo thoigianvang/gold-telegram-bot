@@ -40,9 +40,8 @@ jobs:
           git commit -m "Update sent state" || echo "No changes"
           git pull --rebase || true
           git push || true
-
   gold-news:
-  if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *'
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -53,6 +52,22 @@ jobs:
           python-version: '3.11'
 
       - run: pip install -r requirements.txt
+
+      - name: Gold News Update
+        run: python main.py
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          MODE: news
+
+      - name: Save State
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add sent.json
+          git commit -m "Update sent state" || echo "No changes"
+          git pull --rebase || true
+          git push || true
 
       - name: Gold News Update
         run: python main.py
