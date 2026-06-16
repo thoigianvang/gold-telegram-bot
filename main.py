@@ -631,8 +631,7 @@ def daily_gold_bias(events, state, force=False):
     + dollar_score
     + yield_score
     )
-
-       buy_prob, sell_prob = calculate_probability(total_score)
+    buy_prob, sell_prob = calculate_probability(total_score)
 
     # Risk Level
     if fomc_risk:
