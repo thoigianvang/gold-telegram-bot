@@ -581,7 +581,6 @@ def get_market_signal():
 
 
 def daily_gold_bias(events, state, force=False):
-def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
 
