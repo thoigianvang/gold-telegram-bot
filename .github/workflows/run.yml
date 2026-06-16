@@ -42,7 +42,7 @@ jobs:
           git push || true
 
   gold-news:
-    if: github.event.schedule == '0 0,4,8 * * *'
+  if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *'
     runs-on: ubuntu-latest
 
     steps:
