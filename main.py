@@ -592,10 +592,10 @@ def daily_gold_bias(events, state, force=False):
     news = get_gold_news(limit=6)
     market = get_market_signal()
     if market.get("dxy_change") is None:
-    market["dxy_change"] = 0
+        market["dxy_change"] = 0
 
     if market.get("us10y_change") is None:
-    market["us10y_change"] = 0
+        market["us10y_change"] = 0
     economic_score = 0
     news_score = 0
     dollar_score = 0
@@ -634,49 +634,58 @@ def daily_gold_bias(events, state, force=False):
 
     buy_prob, sell_prob = calculate_probability(total_score)
 
-    if fomc_risk:
-        risk_level = "VERY HIGH"
-    elif abs(total_score) >= 5:
-        risk_level = "HIGH"
-    elif abs(total_score) >= 3:
-        risk_level = "MEDIUM"
-    else:
-        risk_level = "LOW"
-    buy_prob, sell_prob = calculate_probability(total_score)
-    if fomc_risk:
-        primary_bias = "WAIT BEFORE FOMC"
-        bias_icon = "⚪"
-    else:
-        if total_score >= 5:
-            buy_prob = 75
-            sell_prob = 25
-            primary_bias = "BUY GOLD BIAS"
-            bias_icon = "🟢"
-        elif total_score >= 2:
-            buy_prob = 60
-            sell_prob = 40
-            primary_bias = "BUY GOLD nhẹ"
-            bias_icon = "🟢"
-        elif total_score <= -5:
-            buy_prob = 25
-            sell_prob = 75
-            primary_bias = "SELL GOLD BIAS"
-            bias_icon = "🔴"
-        elif total_score <= -2:
-            buy_prob = 40
-            sell_prob = 60
-            primary_bias = "SELL GOLD nhẹ"
-            bias_icon = "🔴"
-        else:
-            buy_prob = 50
-            sell_prob = 50
-            primary_bias = "WAIT / NO CLEAR EDGE"
-            bias_icon = "⚪"
+# Risk Level
+if fomc_risk:
+    risk_level = "VERY HIGH"
+elif abs(total_score) >= 5:
+    risk_level = "HIGH"
+elif abs(total_score) >= 3:
+    risk_level = "MEDIUM"
+else:
+    risk_level = "LOW"
+
+# Confidence
+if fomc_risk:
+    confidence = 50
+elif abs(total_score) >= 10:
+    confidence = 90
+elif abs(total_score) >= 6:
+    confidence = 80
+elif abs(total_score) >= 3:
+    confidence = 70
+else:
+    confidence = 55
+
+# Primary Bias
+if fomc_risk:
+    primary_bias = "WAIT BEFORE FOMC"
+    bias_icon = "⚪"
+
+elif total_score >= 5:
+    primary_bias = "BUY GOLD BIAS"
+    bias_icon = "🟢"
+
+elif total_score >= 2:
+    primary_bias = "BUY GOLD nhẹ"
+    bias_icon = "🟢"
+
+elif total_score <= -5:
+    primary_bias = "SELL GOLD BIAS"
+    bias_icon = "🔴"
+
+elif total_score <= -2:
+    primary_bias = "SELL GOLD nhẹ"
+    bias_icon = "🔴"
+
+else:
+    primary_bias = "WAIT / NO CLEAR EDGE"
+    bias_icon = "⚪"
 
     msg = "📊 GOLD DAILY INTELLIGENCE V4\n\n"
     msg += f"🕒 Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
     msg += f"⚠️ Risk Level: {risk_level}\n\n"
-    msg += "══════════════════════\n\n"
+   
+    
 
     msg += "1️⃣ HIGH IMPACT EVENTS\n\n"
 
