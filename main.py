@@ -632,54 +632,49 @@ def daily_gold_bias(events, state, force=False):
     + yield_score
     )
 
-    buy_prob, sell_prob = calculate_probability(total_score)
+       buy_prob, sell_prob = calculate_probability(total_score)
 
-# Risk Level
-if fomc_risk:
-    risk_level = "VERY HIGH"
-elif abs(total_score) >= 5:
-    risk_level = "HIGH"
-elif abs(total_score) >= 3:
-    risk_level = "MEDIUM"
-else:
-    risk_level = "LOW"
+    # Risk Level
+    if fomc_risk:
+        risk_level = "VERY HIGH"
+    elif abs(total_score) >= 5:
+        risk_level = "HIGH"
+    elif abs(total_score) >= 3:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "LOW"
 
-# Confidence
-if fomc_risk:
-    confidence = 50
-elif abs(total_score) >= 10:
-    confidence = 90
-elif abs(total_score) >= 6:
-    confidence = 80
-elif abs(total_score) >= 3:
-    confidence = 70
-else:
-    confidence = 55
+    # Confidence
+    if fomc_risk:
+        confidence = 50
+    elif abs(total_score) >= 10:
+        confidence = 90
+    elif abs(total_score) >= 6:
+        confidence = 80
+    elif abs(total_score) >= 3:
+        confidence = 70
+    else:
+        confidence = 55
 
-# Primary Bias
-if fomc_risk:
-    primary_bias = "WAIT BEFORE FOMC"
-    bias_icon = "⚪"
-
-elif total_score >= 5:
-    primary_bias = "BUY GOLD BIAS"
-    bias_icon = "🟢"
-
-elif total_score >= 2:
-    primary_bias = "BUY GOLD nhẹ"
-    bias_icon = "🟢"
-
-elif total_score <= -5:
-    primary_bias = "SELL GOLD BIAS"
-    bias_icon = "🔴"
-
-elif total_score <= -2:
-    primary_bias = "SELL GOLD nhẹ"
-    bias_icon = "🔴"
-
-else:
-    primary_bias = "WAIT / NO CLEAR EDGE"
-    bias_icon = "⚪"
+    # Primary Bias
+    if fomc_risk:
+        primary_bias = "WAIT BEFORE FOMC"
+        bias_icon = "⚪"
+    elif total_score >= 5:
+        primary_bias = "BUY GOLD BIAS"
+        bias_icon = "🟢"
+    elif total_score >= 2:
+        primary_bias = "BUY GOLD nhẹ"
+        bias_icon = "🟢"
+    elif total_score <= -5:
+        primary_bias = "SELL GOLD BIAS"
+        bias_icon = "🔴"
+    elif total_score <= -2:
+        primary_bias = "SELL GOLD nhẹ"
+        bias_icon = "🔴"
+    else:
+        primary_bias = "WAIT / NO CLEAR EDGE"
+        bias_icon = "⚪"
 
     msg = "📊 GOLD DAILY INTELLIGENCE V4\n\n"
     msg += f"🕒 Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
