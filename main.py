@@ -590,7 +590,7 @@ def daily_gold_bias(events, state, force=False):
 
     selected_events = target_events(events)
     news = get_gold_news(limit=6)
-
+    market = get_market_signal()
     economic_score = 0
     news_score = 0
     dollar_score = 0
@@ -608,8 +608,13 @@ def daily_gold_bias(events, state, force=False):
 
     for item in news:
         news_score += item["score"]
-        dollar_score = score_dollar_news(news)
-        yield_score = score_yield_news(news)
+    market = get_market_signal()
+
+    headline_dollar_score = score_dollar_news(news)
+    headline_yield_score = score_yield_news(news)
+
+    dollar_score = market["dollar_score"] if market["dollar_score"] != 0 else headline_dollar_score
+    yield_score = market["yield_score"] if market["yield_score"] != 0 else headline_yield_score    
 
     news_score = clamp_score(news_score)
     dollar_score = clamp_score(dollar_score)
