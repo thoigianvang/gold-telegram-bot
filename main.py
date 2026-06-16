@@ -888,7 +888,7 @@ def main():
 
     print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
 
-    if MODE == "daily":
+if MODE == "daily":
 
     daily_report(events, state)
 
