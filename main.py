@@ -877,37 +877,32 @@ def manual_test(events, state):
     daily_gold_bias(events, state, force=True)
 
 def main():
-
     state = load_state()
-
     events = get_events()
 
     print(f"MODE={MODE}")
-
     print(f"EVENTS_FOUND={len(events)}")
-
     print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
 
-if MODE == "daily":
-    daily_report(events, state)
+    if MODE == "daily":
+        daily_report(events, state)
 
-elif MODE == "check":
-    check_events(events, state)
+    elif MODE == "check":
+        check_events(events, state)
 
-elif MODE == "test":
-    manual_test(events, state)
+    elif MODE == "test":
+        manual_test(events, state)
 
-elif MODE == "news":
-    gold_news_update(state)
+    elif MODE == "news":
+        gold_news_update(state)
 
-elif MODE == "bias":
-    daily_gold_bias(events, state)
+    elif MODE == "bias":
+        daily_gold_bias(events, state)
 
-else:
-    send_telegram(f"❌ Unknown MODE: {MODE}")
+    else:
+        send_telegram(f"❌ Unknown MODE: {MODE}")
 
-save_state(state)
-
+    save_state(state)
 try:
 
     main()
