@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from urllib.parse import quote_plus
-
+import yfinance as yf
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
@@ -539,6 +539,48 @@ def calculate_probability(total_score):
 
     sell_prob = 100 - buy_prob
     return buy_prob, sell_prob
+def get_market_signal():
+    result = {
+        "dxy_change": None,
+        "us10y_change": None,
+        "dollar_score": 0,
+        "yield_score": 0,
+    }
+
+    try:
+        dxy = yf.Ticker("DX-Y.NYB").history(period="2d")
+        if len(dxy) >= 2:
+            prev = dxy["Close"].iloc[-2]
+            last = dxy["Close"].iloc[-1]
+            change = ((last - prev) / prev) * 100
+
+            result["dxy_change"] = round(change, 2)
+
+            if change >= 0.3:
+                result["dollar_score"] = -3
+            elif change <= -0.3:
+                result["dollar_score"] = 3
+
+        us10y = yf.Ticker("^TNX").history(period="2d")
+        if len(us10y) >= 2:
+            prev = us10y["Close"].iloc[-2]
+            last = us10y["Close"].iloc[-1]
+            change = last - prev
+
+            result["us10y_change"] = round(change, 2)
+
+            if change >= 0.05:
+                result["yield_score"] = -3
+            elif change <= -0.05:
+                result["yield_score"] = 3
+
+    except Exception as e:
+        print("MARKET ERROR:", e)
+
+    return result
+
+
+def daily_gold_bias(events, state, force=False):
 def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
