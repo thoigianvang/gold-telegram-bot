@@ -591,6 +591,11 @@ def daily_gold_bias(events, state, force=False):
     selected_events = target_events(events)
     news = get_gold_news(limit=6)
     market = get_market_signal()
+    if market.get("dxy_change") is None:
+    market["dxy_change"] = 0
+
+    if market.get("us10y_change") is None:
+    market["us10y_change"] = 0
     economic_score = 0
     news_score = 0
     dollar_score = 0
