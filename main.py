@@ -710,11 +710,15 @@ def daily_gold_bias(events, state, force=False):
     msg += f"News Score: {news_score}\n"
     msg += f"Dollar Score: {dollar_score}\n"
     msg += f"Yield Score: {yield_score}\n"
+    msg += f"DXY Change: {market['dxy_change']}%\n"
+    msg += f"US10Y Change: {market['us10y_change']}\n"
     msg += f"Total Gold Score: {total_score}\n\n"
+    confidence = min(95, abs(total_score) * 8 + 40)
 
+    msg += f"🎯 Confidence: {confidence}%\n"
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
     msg += f"🔴 SELL Probability: {sell_prob}%\n\n"
-
+    
     msg += "══════════════════════\n\n"
     msg += "4️⃣ TODAY BIAS\n\n"
     msg += f"{bias_icon} Primary Bias: {primary_bias}\n\n"
