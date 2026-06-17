@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '0 22 * * *'      # 07:00 JST: Daily Gold Plan
-    - cron: '0 0,4,8 * * *'   # 09:00 / 13:00 / 17:00 JST: Gold News Update
-    - cron: '*/15 * * * *'    # Check lịch tin mỗi 15 phút
+    - cron: '0 22 * * *'       # 07:00 JST Daily Gold Plan
+    - cron: '0 0,4,8 * * *'    # 09:00 / 13:00 / 17:00 JST Gold News
+    - cron: '*/15 * * * *'     # Economic news check every 15 min
 
 jobs:
   daily-bias:
-    if: github.event.schedule == '0 22 * * *'
+    if: ${{ github.event.schedule == '0 22 * * *' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -40,8 +40,9 @@ jobs:
           git commit -m "Update sent state" || echo "No changes"
           git pull --rebase || true
           git push || true
+
   gold-news:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 0,4,8 * * *' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -69,24 +70,8 @@ jobs:
           git pull --rebase || true
           git push || true
 
-      - name: Gold News Update
-        run: python main.py
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: news
-
-      - name: Save State
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add sent.json
-          git commit -m "Update sent state" || echo "No changes"
-          git pull --rebase || true
-          git push || true
-
   news-check:
-    if: github.event.schedule == '*/15 * * * *'
+    if: ${{ github.event.schedule == '*/15 * * * *' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -115,7 +100,7 @@ jobs:
           git push || true
 
   manual-test:
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -132,4 +117,4 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: news
+          MODE: test
