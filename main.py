@@ -603,7 +603,8 @@ def get_dxy_change():
         print("DXY:", current, previous, change)
         return change
 
-    except:
+    except Exception as e:
+        print("DXY ERROR:", e)
         return 0
 def get_us10y_change():
     try:
@@ -621,7 +622,8 @@ def get_us10y_change():
         print("US10Y:", current, previous, change)
         return change
 
-    except:
+    except Exception as e:
+        print("US10Y ERROR:", e)
         return 0
 def market_bias_engine(news_score=0):
 
