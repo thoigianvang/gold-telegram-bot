@@ -592,7 +592,7 @@ def get_dxy_change():
         previous = closes[-2]
 
         change = round(((current - previous) / previous) * 100, 2)
-
+        print("DXY:", change)
         return change
 
     except:
@@ -609,7 +609,7 @@ def get_us10y_change():
         previous = closes[-2]
 
         change = round(((current - previous) / previous) * 100, 2)
-
+        print("US10Y:", change)
         return change
 
     except:
