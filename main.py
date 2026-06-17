@@ -6,6 +6,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from urllib.parse import quote_plus
 import yfinance as yf
+import pandas as pd
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
@@ -589,18 +590,20 @@ def get_market_signal():
 
 def get_dxy_change():
     try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB"
-        data = requests.get(url, timeout=10).json()
+        url = "https://stooq.com/q/d/l/?s=usdidx&i=d"
 
-        result = data["chart"]["result"][0]
-        closes = result["indicators"]["quote"][0]["close"]
+        df = pd.read_csv(url)
 
-        current = closes[-1]
-        previous = closes[-2]
+        current = float(df["Close"].iloc[-1])
+        previous = float(df["Close"].iloc[-2])
 
-        change = round(((current - previous) / previous) * 100, 2)
-        print("DXY:", change)
-        print("DXY:", current, previous, change)
+        change = round(
+            ((current - previous) / previous) * 100,
+            2
+        )
+
+        print(f"DXY = {change}%")
+
         return change
 
     except Exception as e:
@@ -608,18 +611,20 @@ def get_dxy_change():
         return 0
 def get_us10y_change():
     try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/^TNX"
-        data = requests.get(url, timeout=10).json()
+        url = "https://stooq.com/q/d/l/?s=ust10y&i=d"
 
-        result = data["chart"]["result"][0]
-        closes = result["indicators"]["quote"][0]["close"]
+        df = pd.read_csv(url)
 
-        current = closes[-1]
-        previous = closes[-2]
+        current = float(df["Close"].iloc[-1])
+        previous = float(df["Close"].iloc[-2])
 
-        change = round(((current - previous) / previous) * 100, 2)
-        print("US10Y:", change)
-        print("US10Y:", current, previous, change)
+        change = round(
+            ((current - previous) / previous) * 100,
+            2
+        )
+
+        print(f"US10Y = {change}%")
+
         return change
 
     except Exception as e:
@@ -629,9 +634,7 @@ def market_bias_engine(news_score=0):
 
     dxy_change = get_dxy_change()
     us10y_change = get_us10y_change()
-    print("DEBUG DXY =", dxy_change)
 
-    print("DEBUG US10Y =", us10y_change)
     dollar_score = 0
     yield_score = 0
 
@@ -653,7 +656,7 @@ def market_bias_engine(news_score=0):
         "dollar_score": dollar_score,
         "yield_score": yield_score,
         "total": total
-    }        
+    }
 def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
