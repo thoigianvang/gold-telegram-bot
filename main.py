@@ -590,43 +590,15 @@ def get_market_signal():
 
 def get_dxy_change():
     try:
-        url = "https://stooq.com/q/d/l/?s=usdidx&i=d"
-
-        df = pd.read_csv(url)
-
-        current = float(df["Close"].iloc[-1])
-        previous = float(df["Close"].iloc[-2])
-
-        change = round(
-            ((current - previous) / previous) * 100,
-            2
-        )
-
-        print(f"DXY = {change}%")
-
-        return change
-
+        return 0
     except Exception as e:
         print("DXY ERROR:", e)
         return 0
+
+
 def get_us10y_change():
     try:
-        url = "https://stooq.com/q/d/l/?s=ust10y&i=d"
-
-        df = pd.read_csv(url)
-
-        current = float(df["Close"].iloc[-1])
-        previous = float(df["Close"].iloc[-2])
-
-        change = round(
-            ((current - previous) / previous) * 100,
-            2
-        )
-
-        print(f"US10Y = {change}%")
-
-        return change
-
+        return 0
     except Exception as e:
         print("US10Y ERROR:", e)
         return 0
