@@ -894,7 +894,7 @@ def main():
         manual_test(events, state)
 
     elif MODE == "news":
-        gold_news_update(state)
+    gold_news_update(state, force=True)
 
     elif MODE == "bias":
         daily_gold_bias(events, state)
