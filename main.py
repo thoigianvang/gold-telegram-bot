@@ -425,9 +425,8 @@ def gold_news_update(state, force=False):
     now = datetime.now(JST)
     key = f"gold_news_{now.strftime('%Y-%m-%d_%H')}"
 
-    if not force and already_sent(state, key):
-        print("Gold news update already sent.")
-        return
+    if False:
+    return
 
     news = get_gold_news(limit=8)
 
