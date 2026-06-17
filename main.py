@@ -580,7 +580,67 @@ def get_market_signal():
 
     return result
 
+def get_dxy_change():
+    try:
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB"
+        data = requests.get(url, timeout=10).json()
 
+        result = data["chart"]["result"][0]
+        closes = result["indicators"]["quote"][0]["close"]
+
+        current = closes[-1]
+        previous = closes[-2]
+
+        change = round(((current - previous) / previous) * 100, 2)
+
+        return change
+
+    except:
+        return 0
+ def get_us10y_change():
+    try:
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/^TNX"
+        data = requests.get(url, timeout=10).json()
+
+        result = data["chart"]["result"][0]
+        closes = result["indicators"]["quote"][0]["close"]
+
+        current = closes[-1]
+        previous = closes[-2]
+
+        change = round(((current - previous) / previous) * 100, 2)
+
+        return change
+
+    except:
+        return 0
+def market_bias_engine(news_score=0):
+
+    dxy_change = get_dxy_change()
+    us10y_change = get_us10y_change()
+
+    dollar_score = 0
+    yield_score = 0
+
+    if dxy_change <= -0.2:
+        dollar_score = 2
+    elif dxy_change >= 0.2:
+        dollar_score = -2
+
+    if us10y_change <= -0.1:
+        yield_score = 2
+    elif us10y_change >= 0.1:
+        yield_score = -2
+
+    total = news_score + dollar_score + yield_score
+
+    return {
+        "dxy_change": dxy_change,
+        "us10y_change": us10y_change,
+        "dollar_score": dollar_score,
+        "yield_score": yield_score,
+        "total": total
+    }        
 def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
@@ -614,15 +674,15 @@ def daily_gold_bias(events, state, force=False):
     for item in news:
         news_score += item["score"]
 
-    headline_dollar_score = score_dollar_news(news)
-    headline_yield_score = score_yield_news(news)
-
-    dollar_score = market["dollar_score"] if market["dollar_score"] != 0 else headline_dollar_score
-    yield_score = market["yield_score"] if market["yield_score"] != 0 else headline_yield_score
+    # V6 Market Bias Engine
+    market_v6 = market_bias_engine(news_score)
 
     news_score = clamp_score(news_score)
-    dollar_score = clamp_score(dollar_score)
-    yield_score = clamp_score(yield_score)
+    dollar_score = clamp_score(market_v6["dollar_score"])
+    yield_score = clamp_score(market_v6["yield_score"])
+
+    market["dxy_change"] = market_v6["dxy_change"]
+    market["us10y_change"] = market_v6["us10y_change"]
 
     total_score = economic_score + news_score + dollar_score + yield_score
 
