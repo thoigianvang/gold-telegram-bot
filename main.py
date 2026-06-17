@@ -435,8 +435,9 @@ def gold_news_update(state, force=False):
     msg += f"🕒 Update: {now.strftime('%m-%d %H:%M JST')}\n\n"
 
     if not news:
-        msg += "⚪ Chưa lấy được tin tức vàng mới.\n"
-        msg += "Ưu tiên theo lịch USD High Impact và phản ứng giá."
+        msg += "⚪ Chưa có headline vàng mới so với lần quét trước.\n"
+        msg += "✅ Gold News Scanner vẫn đang hoạt động.\n"
+        msg += "Ưu tiên theo dõi USD High Impact, DXY, US10Y và phản ứng giá.\n"
         send_telegram(msg)
         mark_sent(state, key)
         return
