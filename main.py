@@ -441,7 +441,7 @@ def gold_news_update(state, force=False):
         mark_sent(state, key)
         return
 
-       total = 0
+    total = 0
 
     for i, item in enumerate(news, 1):
         total += item["score"]
