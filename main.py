@@ -617,7 +617,9 @@ def market_bias_engine(news_score=0):
 
     dxy_change = get_dxy_change()
     us10y_change = get_us10y_change()
+    print("DEBUG DXY =", dxy_change)
 
+    print("DEBUG US10Y =", us10y_change)
     dollar_score = 0
     yield_score = 0
 
