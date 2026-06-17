@@ -597,7 +597,7 @@ def get_dxy_change():
 
     except:
         return 0
- def get_us10y_change():
+def get_us10y_change():
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/^TNX"
         data = requests.get(url, timeout=10).json()
