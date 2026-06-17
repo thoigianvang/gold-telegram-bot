@@ -426,7 +426,7 @@ def gold_news_update(state, force=False):
     key = f"gold_news_{now.strftime('%Y-%m-%d_%H')}"
 
     if False:
-    return
+        return
 
     news = get_gold_news(limit=8)
 
