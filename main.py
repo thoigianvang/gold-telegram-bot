@@ -441,9 +441,9 @@ def gold_news_update(state, force=False):
         mark_sent(state, key)
         return
 
-  total = 0
+    total = 0
 
-for i, item in enumerate(news, 1):
+    for i, item in enumerate(news, 1):
     total += item["score"]
 
     if item["score"] > 0:
@@ -455,25 +455,25 @@ for i, item in enumerate(news, 1):
 
     msg += f"{i}. {bias_icon} {item['vi_title']}\n"
 
-market_v6 = market_bias_engine(total)
+    market_v6 = market_bias_engine(total)
 
-msg += "\n----------------------\n"
-msg += "📊 MARKET BIAS V6\n"
-msg += f"News Score: {total}\n"
-msg += f"DXY Change: {market_v6['dxy_change']}%\n"
-msg += f"US10Y Change: {market_v6['us10y_change']}%\n"
-msg += f"Dollar Score: {market_v6['dollar_score']}\n"
-msg += f"Yield Score: {market_v6['yield_score']}\n"
-msg += f"Total Gold Score: {market_v6['total']}\n"
+    msg += "\n----------------------\n"
+    msg += "📊 MARKET BIAS V6\n"
+    msg += f"News Score: {total}\n"
+    msg += f"DXY Change: {market_v6['dxy_change']}%\n"
+    msg += f"US10Y Change: {market_v6['us10y_change']}%\n"
+    msg += f"Dollar Score: {market_v6['dollar_score']}\n"
+    msg += f"Yield Score: {market_v6['yield_score']}\n"
+    msg += f"Total Gold Score: {market_v6['total']}\n"
 
-if market_v6["total"] >= 3:
+    if market_v6["total"] >= 3:
     msg += "🟢 News Bias: BUY GOLD nhẹ đến trung bình"
-elif market_v6["total"] <= -3:
+    elif market_v6["total"] <= -3:
     msg += "🔴 News Bias: SELL GOLD nhẹ đến trung bình"
-else:
+    else:
     msg += "⚪ News Bias: WAIT / chưa rõ"
 
-msg += "\n\n⚠️ Đây là bias theo tin tức + DXY + US10Y, không phải lệnh vào trực tiếp."
+    msg += "\n\n⚠️ Đây là bias theo tin tức + DXY + US10Y, không phải lệnh vào trực tiếp."
 
     send_telegram(msg)
     mark_sent(state, key)
