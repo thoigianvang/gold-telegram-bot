@@ -467,12 +467,20 @@ def gold_news_update(state, force=False):
     msg += f"Yield Score: {market_v6['yield_score']}\n"
     msg += f"Total Gold Score: {market_v6['total']}\n"
 
-    if market_v6["total"] >= 3:
-        msg += "🟢 News Bias: BUY GOLD nhẹ đến trung bình"
-    elif market_v6["total"] <= -3:
-        msg += "🔴 News Bias: SELL GOLD nhẹ đến trung bình"
+    if market_v6["total"] >= 4:
+        bias = "🟢 STRONG BUY GOLD"
+
+    elif market_v6["total"] >= 2:
+        bias = "🟢 BUY GOLD"
+
+    elif market_v6["total"] <= -4:
+        bias = "🔴 STRONG SELL GOLD"
+
+    elif market_v6["total"] <= -2:
+        bias = "🔴 SELL GOLD"
+
     else:
-        msg += "⚪ News Bias: WAIT / chưa rõ"
+        bias = "⚪ WAIT"
 
     msg += "\n\n⚠️ Đây là bias theo tin tức + DXY + US10Y, không phải lệnh vào trực tiếp."
 
