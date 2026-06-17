@@ -654,7 +654,7 @@ def daily_gold_bias(events, state, force=False):
     news = get_gold_news(limit=6)
     market = get_market_signal()
     print("CALLING MARKET_BIAS_ENGINE")
-    test_market = market_bias_engine(news_score)
+    test_market = market_bias_engine(0)
     print(test_market)
     if market.get("dxy_change") is None:
         market["dxy_change"] = 0
