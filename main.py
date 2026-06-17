@@ -600,6 +600,7 @@ def get_dxy_change():
 
         change = round(((current - previous) / previous) * 100, 2)
         print("DXY:", change)
+        print("DXY:", current, previous, change)
         return change
 
     except:
@@ -617,6 +618,7 @@ def get_us10y_change():
 
         change = round(((current - previous) / previous) * 100, 2)
         print("US10Y:", change)
+        print("US10Y:", current, previous, change)
         return change
 
     except:
