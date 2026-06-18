@@ -1069,10 +1069,11 @@ def main():
         check_events(events, state)
 
     elif MODE == "auto":
-        print("CALL DAILY FORCE TEST")
+        print("AUTO MODE START")
 
-        daily_gold_bias(events, state, force=True)
-        check_events(events, state)
+        send_telegram("✅ AUTO TEST OK - bot đang chạy đúng MODE auto")
+
+        check_events(events, state) 
 
         now = datetime.now(JST)
 
