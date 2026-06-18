@@ -750,19 +750,13 @@ def daily_gold_bias(events, state, force=False):
     buy_prob, sell_prob = calculate_probability(total_score)
 
     if fomc_risk:
-        risk_level = "VERY HIGH"
-        confidence = min(40 + strength * 5, 90)
-        primary_bias = "WAIT BEFORE FOMC"
+        if fomc_risk:
+    risk_level = "VERY HIGH"
+    confidence = max(buy_prob, sell_prob)
+    primary_bias = "WAIT BEFORE FOMC"
         bias_icon = "⚪"
     else:
-        if abs(total_score) >= 10:
-            confidence = 90
-        elif abs(total_score) >= 6:
-            confidence = 80
-        elif abs(total_score) >= 3:
-            confidence = 70
-        else:
-            confidence = 55
+        confidence = max(buy_prob, sell_prob)
 
         if abs(total_score) >= 5:
             risk_level = "HIGH"
