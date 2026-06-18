@@ -1019,8 +1019,12 @@ def main():
 
     if MODE == "auto":
 
-        gold_news_update(state)
         check_events(events, state)
+
+        now = datetime.now(JST)
+
+        if now.hour in [9, 13, 17] and now.minute < 15:
+            gold_news_update(state)
 
     elif MODE == "test":
 
