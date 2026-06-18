@@ -610,13 +610,18 @@ def get_us10y_change():
     try:
         us10y = yf.Ticker("^TNX")
 
-        hist = us10y.history(period="2d")
+        hist = us10y.history(period="5d")
+
+        print(hist)
 
         if len(hist) < 2:
             return 0
 
         prev = hist["Close"].iloc[-2]
         curr = hist["Close"].iloc[-1]
+
+        print("TNX PREV:", prev)
+        print("TNX CURR:", curr)
 
         return round((curr - prev) / prev * 100, 2)
 
