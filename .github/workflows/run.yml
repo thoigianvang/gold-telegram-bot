@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '0 22 * * *'       # 07:00 JST Daily Gold Plan
+    - cron: '0 22 * * *'       # 07:00 JST Daily Bias
     - cron: '0 0,4,8 * * *'    # 09:00 / 13:00 / 17:00 JST Gold News
-    - cron: '*/15 * * * *'     # Economic news check every 15 min
+    - cron: '*/15 * * * *'     # Check economic news every 15 min
 
 jobs:
   daily-bias:
@@ -18,11 +18,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - run: pip install -r requirements.txt
 
       - name: Daily Gold Bias
@@ -42,16 +40,14 @@ jobs:
           git push || true
 
   gold-news:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 0,4,8 * * *' || github.event.schedule == '*/15 * * * *' }}
+    if: ${{ github.event.schedule == '0 0,4,8 * * *' }}
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - run: pip install -r requirements.txt
 
       - name: Gold News Update
@@ -76,11 +72,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - run: pip install -r requirements.txt
 
       - name: Check Economic News
@@ -105,11 +99,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - run: pip install -r requirements.txt
 
       - name: Manual Test
