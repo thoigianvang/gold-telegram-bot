@@ -1,4 +1,4 @@
-name: Gold Intelligence Bot V2
+name: Gold Intelligence Bot V3
 
 permissions:
   contents: write
@@ -7,11 +7,9 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '0 22 * * *'       # 07:00 JST Daily Bias
-    - cron: '0 0,4,8 * * *'    # 09:00 / 13:00 / 17:00 JST Gold News
-    - cron: '*/15 * * * *'     # Check economic news every 15 min
-jobs:
+    - cron: '*/15 * * * *'
 
+jobs:
   run-bot:
     runs-on: ubuntu-latest
 
@@ -24,7 +22,7 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Run Bot
+      - name: Run Bot Auto
         run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -36,7 +34,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add sent.json
-          git commit -m "Update state" || echo "No changes"
+          git commit -m "Update sent state" || echo "No changes"
           git pull --rebase || true
           git push || true
 
