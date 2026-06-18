@@ -732,10 +732,13 @@ def daily_gold_bias(events, state, force=False):
         economic_score += fomc_news_score
 
     total_score = economic_score + news_score + dollar_score + yield_score
-            abs(news_score)
-            + abs(dollar_score)
-            + abs(yield_score)
-        )
+
+    strength = (
+        abs(economic_score)
+        + abs(news_score)
+        + abs(dollar_score)
+        + abs(yield_score)
+    )
         buy_prob, sell_prob = calculate_probability(total_score)
 
     if fomc_risk:
