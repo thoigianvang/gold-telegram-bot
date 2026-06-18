@@ -530,7 +530,7 @@ def clamp_score(score, min_value=-4, max_value=4):
 def calculate_probability(total_score):
 
     if total_score >= 8:
-    buy_prob = 90
+        buy_prob = 90
 
     elif total_score >= 6:
         buy_prob = 80
