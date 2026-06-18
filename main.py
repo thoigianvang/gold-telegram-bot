@@ -454,7 +454,7 @@ def gold_news_update(state, force=False):
 
     send_telegram(msg)
     mark_sent(state, key)
-        return
+    return
 
     total = 0
 
