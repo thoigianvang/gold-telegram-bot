@@ -1,6 +1,5 @@
 import os
 import json
-import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -586,9 +585,22 @@ def get_market_signal():
 
     return result
 
+import yfinance as yf
+
 def get_dxy_change():
     try:
-        return 0
+        dxy = yf.Ticker("DX-Y.NYB")
+
+        hist = dxy.history(period="2d")
+
+        if len(hist) < 2:
+            return 0
+
+        prev = hist["Close"].iloc[-2]
+        curr = hist["Close"].iloc[-1]
+
+        return round((curr - prev) / prev * 100, 2)
+
     except Exception as e:
         print("DXY ERROR:", e)
         return 0
@@ -596,7 +608,18 @@ def get_dxy_change():
 
 def get_us10y_change():
     try:
-        return 0
+        us10y = yf.Ticker("^TNX")
+
+        hist = us10y.history(period="2d")
+
+        if len(hist) < 2:
+            return 0
+
+        prev = hist["Close"].iloc[-2]
+        curr = hist["Close"].iloc[-1]
+
+        return round((curr - prev) / prev * 100, 2)
+
     except Exception as e:
         print("US10Y ERROR:", e)
         return 0
