@@ -839,7 +839,16 @@ def daily_gold_bias(events, state, force=False):
     buy_prob, sell_prob = calculate_probability(total_score)
     msg += f"🎯 Confidence: {confidence}%\n"
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
-    msg += f"🔴 SELL Probability: {sell_prob}%\n\n"
+    msg += f"🔴 SELL Probability: {sell_prob}%\n"
+
+    if total_score >= 4:
+        action = "🟢 ACTION: BUY ZONE"
+    elif total_score <= -4:
+        action = "🔴 ACTION: SELL ZONE"
+    else:
+        action = "⚪ ACTION: WAIT"
+
+    msg += f"{action}\n\n"
 
     msg += "══════════════════════\n\n"
     msg += "4️⃣ TODAY BIAS\n\n"
@@ -861,7 +870,16 @@ def daily_gold_bias(events, state, force=False):
     msg += "⚠️ Đây là mô hình bias, không phải lệnh vào trực tiếp.\n"
     msg += "Cần thêm phản ứng giá, spread và nến xác nhận."
 
+    last_score_key = "last_total_score"
+    last_total_score = state.get(last_score_key)
+
+    if last_total_score == total_score and not force:
+        print("NO CHANGE - SKIP TELEGRAM")
+        return
+
     send_telegram(msg)
+
+    state[last_score_key] = total_score
     mark_sent(state, key)
 
 def check_events(events, state):
