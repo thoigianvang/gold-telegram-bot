@@ -1068,16 +1068,16 @@ def main():
 
         check_events(events, state)
 
+    elif MODE == "auto":
+        print("CALL DAILY FORCE TEST")
+
+        daily_gold_bias(events, state, force=True)
+        check_events(events, state)
+
         now = datetime.now(JST)
 
         if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
-
-    elif MODE == "auto":
-        print("CALL DAILY FORCE TEST")
-        daily_gold_bias(events, state, force=True)
-        check_events(events, state)
-        gold_news_update(state)
 
     elif MODE == "daily":
 
