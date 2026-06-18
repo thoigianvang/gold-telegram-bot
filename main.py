@@ -453,7 +453,7 @@ def gold_news_update(state, force=False):
     state["last_news_hash"] = news_hash
 
     send_telegram(msg)
-        mark_sent(state, key)
+    mark_sent(state, key)
         return
 
     total = 0
