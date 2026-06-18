@@ -1020,7 +1020,11 @@ def main():
     if MODE == "auto":
 
         gold_news_update(state)
+        check_events(events, state)
 
+    elif MODE == "test":
+
+        gold_news_update(state)
         check_events(events, state)
 
     elif MODE == "daily":
@@ -1036,12 +1040,14 @@ def main():
         gold_news_update(state)
 
     elif MODE == "bias":
+
         daily_gold_bias(events, state)
 
     else:
+
         send_telegram(f"❌ Unknown MODE: {MODE}")
 
-    save_state(state)
+        save_state(state)
 try:
 
     main()
