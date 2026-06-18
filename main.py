@@ -1182,23 +1182,20 @@ def main():
     
 
     if MODE == "auto":
-       now = datetime.now(JST)
 
-    if now.hour == 7 and now.minute < 15:
-           daily_report(events, state)
+        now = datetime.now(JST)
+
+        if now.hour == 7 and now.minute < 15:
+            daily_report(events, state)
 
         print("AUTO MODE START")
 
-    if now.hour == 7 and now.minute < 15:
-        daily_report(events, state)
+        daily_gold_bias(events, state, force=True)
 
-    if now.hour in [9, 16, 21] and now.minute < 15:
-        daily_gold_bias(events, state)
+        check_events(events, state)
 
-    check_events(events, state)
-
-    if now.hour in [9, 13, 17] and now.minute < 15:
-        gold_news_update(state)
+        if now.hour in [9, 13, 17] and now.minute < 15:
+            gold_news_update(state)
 
         check_events(events, state)
 
