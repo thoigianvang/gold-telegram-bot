@@ -836,6 +836,33 @@ def score_fomc_from_news(news):
             score += 3
 
     return score
+def session_alert(state, total_score):
+
+    now = datetime.now(JST)
+    session_key = f"session_alert_{now.strftime('%Y-%m-%d')}_{now.hour}"
+
+    if already_sent(state, session_key):
+        print("Session alert already sent.")
+        return
+
+    if total_score >= 3:
+        bias = "BUY"
+        icon = "🟢"
+    elif total_score <= -3:
+        bias = "SELL"
+        icon = "🔴"
+    else:
+        bias = "WAIT"
+        icon = "⚪"
+
+    msg = "🌍 SESSION OPEN ALERT\n\n"
+    msg += f"Time: {now.strftime('%m-%d %H:%M JST')}\n"
+    msg += f"{icon} Bias: {bias}\n"
+    msg += f"Gold Score: {total_score}\n\n"
+    msg += "⚠️ Đây là cảnh báo phiên, không phải lệnh vào trực tiếp."
+
+    send_telegram(msg)
+    mark_sent(state, session_key)   
 def daily_gold_bias(events, state, force=False):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
@@ -890,7 +917,8 @@ def daily_gold_bias(events, state, force=False):
 
     total_score = economic_score + news_score + dollar_score + yield_score
     total_score = clamp_score(total_score, -10, 10)
-
+    if now.hour in [9, 16, 21] and now.minute < 15:
+    session_alert(state, total_score)
     buy_prob, sell_prob = calculate_probability(total_score)
 
     confidence = max(buy_prob, sell_prob)
@@ -1023,6 +1051,8 @@ def daily_gold_bias(events, state, force=False):
 
     send_telegram(msg)
 
+    check_bias_reversal(state, total_score)
+
     state[last_score_key] = total_score
     mark_sent(state, key)
 
@@ -1098,6 +1128,33 @@ def check_events(events, state):
 
     if not sent_any:
         print("No alert to send now.")
+def check_bias_reversal(state, total_score):
+
+    last_score = state.get("last_bias_score")
+
+    if last_score is None:
+        state["last_bias_score"] = total_score
+        return
+
+    if last_score <= -3 and total_score >= 3:
+
+        send_telegram(
+            "🚨 BIAS REVERSAL\n\n"
+            "SELL ➜ BUY\n"
+            f"Old Score: {last_score}\n"
+            f"New Score: {total_score}"
+        )
+
+    elif last_score >= 3 and total_score <= -3:
+
+        send_telegram(
+            "🚨 BIAS REVERSAL\n\n"
+            "BUY ➜ SELL\n"
+            f"Old Score: {last_score}\n"
+            f"New Score: {total_score}"
+        )
+
+    state["last_bias_score"] = total_score       
 def manual_test(events, state):
 
     msg = "✅ BOT TEST OK\n\n"
@@ -1125,6 +1182,10 @@ def main():
     
 
     if MODE == "auto":
+       now = datetime.now(JST)
+
+       if now.hour == 7 and now.minute < 15:
+           daily_report(events, state)
 
         print("AUTO MODE START")
 
