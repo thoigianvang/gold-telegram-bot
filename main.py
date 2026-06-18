@@ -214,7 +214,23 @@ def score_news_title(title):
 
     return score, reasons
 
+def parse_number(value):
+    try:
+        if value is None:
+            return None
 
+        value = str(value)
+        value = value.replace("%", "")
+        value = value.replace(",", "")
+        value = value.strip()
+
+        if value in ["", "-", "None"]:
+            return None
+
+        return float(value)
+
+    except:
+        return None
 def get_events():
     r = requests.get(CALENDAR_URL, timeout=20)
     r.raise_for_status()
@@ -688,37 +704,57 @@ def market_bias_engine(news_score=0):
     "total": total_score
     }
 def format_actual_alert(event, market_v6):
+
     title = event.get("title", "")
-    forecast = event.get("forecast") or "-"
-    previous = event.get("previous") or "-"
-    actual = event.get("actual") or "-"
+    actual = event.get("actual", "-")
+    forecast = event.get("forecast", "-")
+    previous = event.get("previous", "-")
+
+    actual_num = parse_number(actual)
+    forecast_num = parse_number(forecast)
+
+    deviation_text = "N/A"
+    usd_bias = "Neutral"
+    gold_bias = "WAIT"
+
+    if actual_num is not None and forecast_num is not None:
+        deviation = actual_num - forecast_num
+        deviation_text = f"{deviation:+.2f}"
+
+        if deviation > 0:
+            usd_bias = "Bullish USD"
+            gold_bias = "SELL GOLD bias"
+        elif deviation < 0:
+            usd_bias = "Bearish USD"
+            gold_bias = "BUY GOLD bias"
 
     total_score = market_v6.get("total", 0)
+    dxy_change = market_v6.get("dxy_change", 0)
+    us10y_change = market_v6.get("us10y_change", 0)
 
     if total_score >= 3:
-        bias = "🟢 BUY GOLD bias"
-        action = "BUY WATCH - Chờ giá hồi về hỗ trợ rồi xác nhận BUY"
+        action = "BUY WATCH - chờ giá hồi về hỗ trợ rồi xác nhận BUY"
     elif total_score <= -3:
-        bias = "🔴 SELL GOLD bias"
-        action = "SELL WATCH - Chờ giá hồi lên kháng cự rồi xác nhận SELL"
+        action = "SELL WATCH - chờ giá hồi lên kháng cự rồi xác nhận SELL"
     else:
-        bias = "⚪ WAIT"
-        action = "WAIT - Chưa đủ lực, không ép lệnh"
+        action = "WAIT - chưa đủ lực, không ép lệnh"
 
-    msg = "🚨 HIGH IMPACT ACTUAL RELEASED\n"
+    msg = "🚨 HIGH IMPACT ACTUAL RELEASED\n\n"
     msg += f"Event: {title}\n"
     msg += f"Forecast: {forecast}\n"
     msg += f"Previous: {previous}\n"
-    msg += f"Actual: {actual}\n\n"
+    msg += f"Actual: {actual}\n"
+    msg += f"Deviation: {deviation_text}\n\n"
 
     msg += "📊 Market Reaction\n"
-    msg += f"Gold Bias: {bias}\n"
-    msg += f"DXY: {market_v6.get('dxy_change', 0)}%\n"
-    msg += f"US10Y: {market_v6.get('us10y_change', 0)}%\n"
-    msg += f"Total Score: {total_score}\n"
+    msg += f"USD Bias: {usd_bias}\n"
+    msg += f"Gold Bias: {gold_bias}\n"
+    msg += f"DXY: {dxy_change}%\n"
+    msg += f"US10Y: {us10y_change}%\n"
+    msg += f"Total Score: {total_score}\n\n"
     msg += f"Action: {action}\n\n"
 
-    msg += "⚠️ Không vào lệnh ngay khi tin vừa ra. Chờ nến xác nhận + spread ổn."
+    msg += "⚠️ Không vào lệnh ngay khi tin vừa ra. Chờ spread ổn, nến xác nhận."
 
     return msg
 def score_fomc_from_news(news):
