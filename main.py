@@ -836,6 +836,7 @@ def daily_gold_bias(events, state, force=False):
     msg += f"DXY Change: {market['dxy_change']}%\n"
     msg += f"US10Y Change: {market['us10y_change']}\n"
     msg += f"Total Gold Score: {total_score}\n\n"
+    buy_prob, sell_prob = calculate_probability(total_score)
     msg += f"🎯 Confidence: {confidence}%\n"
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
     msg += f"🔴 SELL Probability: {sell_prob}%\n\n"
