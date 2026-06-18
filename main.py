@@ -997,7 +997,7 @@ def check_events(events, state):
                 mark_sent(state, key)
                 sent_any = True
 
-        if not sent_any:
+    if not sent_any:
 
         print("No alert to send now.")
 
