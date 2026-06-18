@@ -849,16 +849,15 @@ def daily_gold_bias(events, state, force=False):
 
     if fomc_risk:
         msg += "Kịch bản FOMC:\n"
-        msg += "- Fed diều hâu / USD mạnh / lợi suất tăng → SELL GOLD bias\n"
-        msg += "- Fed bồ câu / USD yếu / lợi suất giảm → BUY GOLD bias\n"
-        msg += "- Trước FOMC: ưu tiên WAIT, không ép lệnh.\n"
+        msg += "- Trước / trong FOMC: ưu tiên WAIT, không ép lệnh.\n"
+        msg += "- Chỉ giao dịch sau khi giá phản ứng rõ với tin.\n"
+
+    if total_score >= 3:
+        msg += "Kịch bản ưu tiên: BUY bias. Chờ giá hồi về hỗ trợ rồi tìm BUY theo nến xác nhận.\n"
+    elif total_score <= -3:
+        msg += "Kịch bản ưu tiên: SELL bias. Chờ giá hồi lên kháng cự rồi tìm SELL theo nến xác nhận.\n"
     else:
-        if total_score >= 2:
-            msg += "Kịch bản ưu tiên: chờ giá hồi về hỗ trợ rồi tìm BUY theo xác nhận nến.\n"
-        elif total_score <= -2:
-            msg += "Kịch bản ưu tiên: chờ giá hồi lên kháng cự rồi tìm SELL theo xác nhận nến.\n"
-        else:
-            msg += "Kịch bản ưu tiên: đứng ngoài nếu không có setup rõ.\n"
+        msg += "Kịch bản ưu tiên: WAIT. Điểm chưa đủ mạnh, không ép lệnh.\n"
 
     msg += "\n══════════════════════\n"
     msg += "⚠️ Đây là mô hình bias, không phải lệnh vào trực tiếp.\n"
