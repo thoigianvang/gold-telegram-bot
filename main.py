@@ -1,11 +1,10 @@
 import os
 import json
-from bs4 import BeautifulSoup
+import requests
+import yfinance as yf
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from urllib.parse import quote_plus
-import yfinance as yf
-import pandas as pd
+from bs4 import BeautifulSoup
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
