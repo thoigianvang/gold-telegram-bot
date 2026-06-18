@@ -918,7 +918,7 @@ def daily_gold_bias(events, state, force=False):
     total_score = economic_score + news_score + dollar_score + yield_score
     total_score = clamp_score(total_score, -10, 10)
     if now.hour in [9, 16, 21] and now.minute < 15:
-    session_alert(state, total_score)
+        session_alert(state, total_score)
     buy_prob, sell_prob = calculate_probability(total_score)
 
     confidence = max(buy_prob, sell_prob)
