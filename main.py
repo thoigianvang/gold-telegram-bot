@@ -655,11 +655,11 @@ def market_bias_engine(news_score=0):
 
     total_score = news_score + dollar_score + yield_score
     return {
-        "dxy_change": dxy_change,
-        "us10y_change": us10y_change,
-        "dollar_score": dollar_score,
-        "yield_score": yield_score,
-        "total": total
+    "dxy_change": dxy_change,
+    "us10y_change": us10y_change,
+    "dollar_score": dollar_score,
+    "yield_score": yield_score,
+    "total": total_score
     }
 def score_fomc_from_news(news):
     score = 0
@@ -726,16 +726,16 @@ def daily_gold_bias(events, state, force=False):
     market["dxy_change"] = market_v6["dxy_change"]
     market["us10y_change"] = market_v6["us10y_change"]
 
-    if economic_score == 0 and fomc_risk:
+    economic_score = 0
+
+    if fomc_risk:
         economic_score += fomc_news_score
 
-        total_score = economic_score + news_score + dollar_score + yield_score
-        strength = (
-        abs(economic_score)
-        + abs(news_score)
-        + abs(dollar_score)
-        + abs(yield_score)
-         )
+    total_score = economic_score + news_score + dollar_score + yield_score
+            abs(news_score)
+            + abs(dollar_score)
+            + abs(yield_score)
+        )
         buy_prob, sell_prob = calculate_probability(total_score)
 
     if fomc_risk:
