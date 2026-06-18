@@ -653,12 +653,7 @@ def market_bias_engine(news_score=0):
     elif us10y_change >= 0.1:
         yield_score = -2
 
-    total_score = (
-    economic_score * 2
-    + news_score
-    + dollar_score
-    + yield_score
-    )
+    total_score = news_score + dollar_score + yield_score
     return {
         "dxy_change": dxy_change,
         "us10y_change": us10y_change,
