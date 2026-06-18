@@ -999,15 +999,14 @@ def check_events(events, state):
 
         if not sent_any:
 
-            print("No alert to send now.")
+        print("No alert to send now.")
 
-            send_telegram(
-                f"🤖 BOT OK\n"
-                f"Time: {now.strftime('%H:%M JST')}\n"
-                f"Events: {len(events)}\n"
-                f"No alert now."
-            )
-
+        send_telegram(
+            f"🤖 BOT OK\n"
+            f"Time: {now.strftime('%H:%M JST')}\n"
+            f"Events: {len(events)}\n"
+            f"No alert now."
+        )
 def manual_test(events, state):
 
     msg = "✅ BOT TEST OK\n\n"
