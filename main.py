@@ -11,7 +11,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
 
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
-STATE_FILE = "sent.json
+STATE_FILE = "sent.json"
 
 NY = ZoneInfo("America/New_York")
 JST = ZoneInfo("Asia/Tokyo")
