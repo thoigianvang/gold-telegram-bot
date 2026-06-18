@@ -636,18 +636,29 @@ def market_bias_engine(news_score=0):
     dollar_score = 0
     yield_score = 0
 
-    if dxy_change <= -0.2:
+    if dxy_change <= -0.5:
+        dollar_score = 3
+    elif dxy_change >= 0.5:
+        dollar_score = -3
+    elif dxy_change <= -0.2:
         dollar_score = 2
     elif dxy_change >= 0.2:
         dollar_score = -2
-
-    if us10y_change <= -0.1:
+        if us10y_change <= -0.3:
+        yield_score = 3
+    elif us10y_change >= 0.3:
+        yield_score = -3
+    elif us10y_change <= -0.1:
         yield_score = 2
     elif us10y_change >= 0.1:
         yield_score = -2
 
-    total = news_score + dollar_score + yield_score
-
+    total_score = (
+    economic_score * 2
+    + news_score
+    + dollar_score
+    + yield_score
+    )
     return {
         "dxy_change": dxy_change,
         "us10y_change": us10y_change,
@@ -724,12 +735,17 @@ def daily_gold_bias(events, state, force=False):
         economic_score += fomc_news_score
 
         total_score = economic_score + news_score + dollar_score + yield_score
-
+        strength = (
+        abs(economic_score)
+        + abs(news_score)
+        + abs(dollar_score)
+        + abs(yield_score)
+         )
         buy_prob, sell_prob = calculate_probability(total_score)
 
     if fomc_risk:
         risk_level = "VERY HIGH"
-        confidence = min(50 + abs(total_score) * 10, 95)
+        confidence = min(40 + strength * 5, 90)
         primary_bias = "WAIT BEFORE FOMC"
         bias_icon = "⚪"
     else:
