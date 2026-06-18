@@ -758,8 +758,9 @@ def daily_gold_bias(events, state, force=False):
         + abs(dollar_score)
         + abs(yield_score)
     )
-    confidence = max(buy_prob, sell_prob)
-
+    
+    confidence = min(95, 50 + abs(total_score) * 5)
+    
     if fomc_risk:
         risk_level = "VERY HIGH"
     else:
