@@ -529,32 +529,32 @@ def clamp_score(score, min_value=-4, max_value=4):
 
 def calculate_probability(total_score):
 
-    if total_score >= 8:
-        buy_prob = 90
-
-    elif total_score >= 6:
-        buy_prob = 80
+    if total_score >= 6:
+        buy_prob = 85
 
     elif total_score >= 4:
-        buy_prob = 70
+        buy_prob = 75
 
     elif total_score >= 2:
-        buy_prob = 60
+        buy_prob = 65
 
-    elif total_score <= -8:
-        buy_prob = 10
+    elif total_score >= 1:
+        buy_prob = 55
+
+    elif total_score == 0:
+        buy_prob = 50
 
     elif total_score <= -6:
-        buy_prob = 20
+        buy_prob = 15
 
     elif total_score <= -4:
-        buy_prob = 30
+        buy_prob = 25
 
     elif total_score <= -2:
-        buy_prob = 40
+        buy_prob = 35
 
     else:
-        buy_prob = 50
+        buy_prob = 45
 
     sell_prob = 100 - buy_prob
 
@@ -651,17 +651,18 @@ def market_bias_engine(news_score=0):
     dollar_score = 0
     yield_score = 0
 
-    if dxy_change <= -0.3:
-        dollar_score = 3
-
-    elif dxy_change >= 0.3:
+    if dxy_change >= 0.5:
         dollar_score = -3
-
-    elif dxy_change <= -0.1:
-        dollar_score = 2
-
-    elif dxy_change >= 0.1:
+    elif dxy_change >= 0.3:
         dollar_score = -2
+    elif dxy_change >= 0.1:
+        dollar_score = -1
+    elif dxy_change <= -0.5:
+        dollar_score = 3
+    elif dxy_change <= -0.3:
+        dollar_score = 2
+    elif dxy_change <= -0.1:
+        dollar_score = 1
     if us10y_change <= -0.3:
         yield_score = 3
     elif us10y_change >= 0.3:
