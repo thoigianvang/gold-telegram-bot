@@ -1067,17 +1067,17 @@ def main():
     
 
     if MODE == "auto":
+
         print("AUTO MODE START")
 
-        send_telegram("✅ AUTO TEST OK - bot đang chạy đúng MODE auto")
+        daily_gold_bias(events, state, force=True)
 
-        check_events(events, state) 
+        check_events(events, state)
 
         now = datetime.now(JST)
 
-        if now.hour in [9, 13, 17] and now.minute < 15:
+        if now.hour in [9,13,17] and now.minute < 15:
             gold_news_update(state)
-
     elif MODE == "daily":
 
         daily_report(events, state)
