@@ -693,11 +693,11 @@ def daily_gold_bias(events, state, force=False):
     market["us10y_change"] = market_v6["us10y_change"]
 
     if economic_score == 0 and fomc_risk:
-    economic_score += fomc_news_score
+        economic_score += fomc_news_score
 
-    total_score = economic_score + news_score + dollar_score + yield_score
+        total_score = economic_score + news_score + dollar_score + yield_score
 
-    buy_prob, sell_prob = calculate_probability(total_score)
+        buy_prob, sell_prob = calculate_probability(total_score)
 
     if fomc_risk:
         risk_level = "VERY HIGH"
