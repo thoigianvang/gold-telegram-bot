@@ -5,6 +5,7 @@ import yfinance as yf
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from bs4 import BeautifulSoup
+from urllib.parse import quote_plus
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
