@@ -11,7 +11,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
 
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
-STATE_FILE = "sent.json"
+STATE_FILE = "sent.json
 
 NY = ZoneInfo("America/New_York")
 JST = ZoneInfo("Asia/Tokyo")
@@ -651,15 +651,17 @@ def market_bias_engine(news_score=0):
     dollar_score = 0
     yield_score = 0
 
-    if dxy_change <= -0.5:
-        dollar_score = -3
-    elif dxy_change >= 0.5:
+    if dxy_change <= -0.3:
         dollar_score = 3
 
-    elif dxy_change <= -0.2:
-        dollar_score = -2
-    elif dxy_change >= 0.2:
+    elif dxy_change >= 0.3:
+        dollar_score = -3
+
+    elif dxy_change <= -0.1:
         dollar_score = 2
+
+    elif dxy_change >= 0.1:
+        dollar_score = -2
     if us10y_change <= -0.3:
         yield_score = 3
     elif us10y_change >= 0.3:
