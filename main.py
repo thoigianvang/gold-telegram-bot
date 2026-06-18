@@ -1074,10 +1074,10 @@ def main():
             gold_news_update(state)
 
     elif MODE == "auto":
-
-        gold_news_update(state)
+        print("CALL DAILY FORCE TEST")
         daily_gold_bias(events, state, force=True)
         check_events(events, state)
+        gold_news_update(state)
 
     elif MODE == "daily":
 
