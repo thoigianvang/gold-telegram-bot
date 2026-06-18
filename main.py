@@ -1076,6 +1076,7 @@ def main():
     elif MODE == "auto":
 
         gold_news_update(state)
+        daily_gold_bias(events, state, force=True)
         check_events(events, state)
 
     elif MODE == "daily":
