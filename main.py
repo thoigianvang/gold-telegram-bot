@@ -444,13 +444,15 @@ def gold_news_update(state, force=False):
         msg += "⚪ Chưa có headline vàng mới so với lần quét trước.\n"
         msg += "✅ Gold News Scanner vẫn đang hoạt động.\n"
         msg += "Ưu tiên theo dõi USD High Impact, DXY, US10Y và phản ứng giá.\n"
-        news_hash = hashlib.md5(msg.encode()).hexdigest()
+            news_hash = hashlib.md5(msg.encode()).hexdigest()
 
     if state.get("last_news_hash") == news_hash:
+        print("News unchanged, skip sending")
         return
 
-        state["last_news_hash"] = news_hash
-        send_telegram(msg)
+    state["last_news_hash"] = news_hash
+
+    send_telegram(msg)
         mark_sent(state, key)
         return
 
