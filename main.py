@@ -680,6 +680,40 @@ def market_bias_engine(news_score=0):
     "yield_score": yield_score,
     "total": total_score
     }
+def format_actual_alert(event, market_v6):
+    title = event.get("title", "")
+    forecast = event.get("forecast") or "-"
+    previous = event.get("previous") or "-"
+    actual = event.get("actual") or "-"
+
+    total_score = market_v6.get("total", 0)
+
+    if total_score >= 3:
+        bias = "🟢 BUY GOLD bias"
+        action = "BUY WATCH - Chờ giá hồi về hỗ trợ rồi xác nhận BUY"
+    elif total_score <= -3:
+        bias = "🔴 SELL GOLD bias"
+        action = "SELL WATCH - Chờ giá hồi lên kháng cự rồi xác nhận SELL"
+    else:
+        bias = "⚪ WAIT"
+        action = "WAIT - Chưa đủ lực, không ép lệnh"
+
+    msg = "🚨 HIGH IMPACT ACTUAL RELEASED\n"
+    msg += f"Event: {title}\n"
+    msg += f"Forecast: {forecast}\n"
+    msg += f"Previous: {previous}\n"
+    msg += f"Actual: {actual}\n\n"
+
+    msg += "📊 Market Reaction\n"
+    msg += f"Gold Bias: {bias}\n"
+    msg += f"DXY: {market_v6.get('dxy_change', 0)}%\n"
+    msg += f"US10Y: {market_v6.get('us10y_change', 0)}%\n"
+    msg += f"Total Score: {total_score}\n"
+    msg += f"Action: {action}\n\n"
+
+    msg += "⚠️ Không vào lệnh ngay khi tin vừa ra. Chờ nến xác nhận + spread ổn."
+
+    return msg
 def score_fomc_from_news(news):
     score = 0
 
@@ -889,121 +923,74 @@ def daily_gold_bias(events, state, force=False):
 def check_events(events, state):
 
     now = datetime.now(JST)
-
     sent_any = False
 
     for e in events:
 
         if not e["jst"]:
-
             continue
 
         minutes = (e["jst"] - now).total_seconds() / 60
-
         key_base = event_key(e)
 
         if 25 <= minutes <= 35:
-
             key = f"warn30_{key_base}"
-
             if not already_sent(state, key):
-
                 msg = "🚨 30 PHÚT NỮA CÓ TIN MẠNH\n\n"
-
                 msg += f"Tin: {e['title']}\n"
-
                 msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
-
                 msg += f"Forecast: {e['forecast']}\n"
-
                 msg += f"Previous: {e['previous']}\n\n"
-
                 msg += "⚠️ XAUUSD có thể giật mạnh. Không FOMO trước tin."
 
                 send_telegram(msg)
-
                 mark_sent(state, key)
-
                 sent_any = True
 
         if 10 <= minutes <= 20:
-
             key = f"warn15_{key_base}"
-
             if not already_sent(state, key):
-
                 msg = "⚠️ 15 PHÚT NỮA CÓ TIN MẠNH\n\n"
-
                 msg += f"Tin: {e['title']}\n"
-
                 msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
-
                 msg += f"Forecast: {e['forecast']}\n"
-
                 msg += f"Previous: {e['previous']}\n\n"
-
                 msg += "Quan sát spread và nến phản ứng. Không all-in."
 
                 send_telegram(msg)
-
                 mark_sent(state, key)
-
                 sent_any = True
 
         if 2 <= minutes <= 8:
-
             key = f"warn5_{key_base}"
-
             if not already_sent(state, key):
-
                 msg = "🔥 5 PHÚT NỮA CÓ TIN MẠNH\n\n"
-
                 msg += f"Tin: {e['title']}\n"
-
                 msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n\n"
-
                 msg += "⚠️ Hạn chế vào lệnh mới. Chờ Actual và phản ứng giá."
 
                 send_telegram(msg)
-
                 mark_sent(state, key)
-
                 sent_any = True
 
         if e["actual"] != "-" and -30 <= minutes <= 30:
-
             key = f"actual_{key_base}_{e['actual']}"
 
             if not already_sent(state, key):
+                bias, news_score = gold_bias_from_event(
+                    e["title"],
+                    e["actual"],
+                    e["forecast"]
+                )
 
-                bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
-
-                msg = "🔥 USD NEWS RELEASE\n\n"
-
-                msg += f"Tin: {e['title']}\n"
-
-                msg += f"Giờ: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
-
-                msg += f"Actual: {e['actual']}\n"
-
-                msg += f"Forecast: {e['forecast']}\n"
-
-                msg += f"Previous: {e['previous']}\n\n"
-
-                msg += f"{bias}\n"
-
-                msg += f"Gold Score: {score}\n\n"
-
-                msg += "⚠️ Chờ nến xác nhận. Không vào lệnh chỉ vì tin vừa ra."
+                market_v6 = market_bias_engine(news_score)
+                msg = format_actual_alert(e, market_v6)
 
                 send_telegram(msg)
-
                 mark_sent(state, key)
-
                 sent_any = True
 
     if not sent_any:
-
         print("No alert to send now.")
 
 def manual_test(events, state):
