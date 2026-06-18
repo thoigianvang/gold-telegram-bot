@@ -723,44 +723,95 @@ def format_actual_alert(event, market_v6):
     forecast_num = parse_number(forecast)
 
     deviation_text = "N/A"
-    usd_bias = "Neutral"
-    gold_bias = "WAIT"
+    event_bias = "WAIT"
+    event_score = 0
 
     if actual_num is not None and forecast_num is not None:
         deviation = actual_num - forecast_num
         deviation_text = f"{deviation:+.2f}"
 
-        if deviation > 0:
-            usd_bias = "Bullish USD"
-            gold_bias = "SELL GOLD bias"
-        elif deviation < 0:
-            usd_bias = "Bearish USD"
-            gold_bias = "BUY GOLD bias"
+        title_l = title.lower()
 
-    total_score = market_v6.get("total", 0)
+        bad_when_higher = [
+            "cpi", "ppi", "inflation", "core",
+            "payroll", "nonfarm", "nfp",
+            "unemployment claims", "jobless claims",
+            "retail sales", "gdp",
+            "ism", "pmi"
+        ]
+
+        good_when_higher = [
+            "unemployment rate"
+        ]
+
+        if any(k in title_l for k in bad_when_higher):
+            if deviation > 0:
+                event_bias = "SELL GOLD BIAS"
+                event_score = -4
+            elif deviation < 0:
+                event_bias = "BUY GOLD BIAS"
+                event_score = 4
+
+        elif any(k in title_l for k in good_when_higher):
+            if deviation > 0:
+                event_bias = "BUY GOLD BIAS"
+                event_score = 4
+            elif deviation < 0:
+                event_bias = "SELL GOLD BIAS"
+                event_score = -4
+
+        else:
+            if deviation > 0:
+                event_bias = "SELL GOLD BIAS"
+                event_score = -2
+            elif deviation < 0:
+                event_bias = "BUY GOLD BIAS"
+                event_score = 2
+
+    market_score = market_v6.get("total", 0)
     dxy_change = market_v6.get("dxy_change", 0)
     us10y_change = market_v6.get("us10y_change", 0)
 
-    if total_score >= 3:
+    final_score = event_score + market_score
+
+    if final_score >= 5:
+        final_bias = "🟢 STRONG BUY GOLD"
         action = "BUY WATCH - chờ giá hồi về hỗ trợ rồi xác nhận BUY"
-    elif total_score <= -3:
+    elif final_score >= 2:
+        final_bias = "🟢 BUY GOLD nhẹ"
+        action = "BUY WATCH - chỉ buy khi có nến xác nhận"
+    elif final_score <= -5:
+        final_bias = "🔴 STRONG SELL GOLD"
         action = "SELL WATCH - chờ giá hồi lên kháng cự rồi xác nhận SELL"
+    elif final_score <= -2:
+        final_bias = "🔴 SELL GOLD nhẹ"
+        action = "SELL WATCH - chỉ sell khi có nến xác nhận"
     else:
-        action = "WAIT - chưa đủ lực, không ép lệnh"
+        final_bias = "⚪ WAIT"
+        action = "WAIT - tin chưa đủ rõ hoặc market đang lệch nhau"
+
+    confidence = min(95, 50 + abs(final_score) * 5)
 
     msg = "🚨 HIGH IMPACT ACTUAL RELEASED\n\n"
     msg += f"Event: {title}\n"
+    msg += f"Actual: {actual}\n"
     msg += f"Forecast: {forecast}\n"
     msg += f"Previous: {previous}\n"
-    msg += f"Actual: {actual}\n"
     msg += f"Deviation: {deviation_text}\n\n"
 
-    msg += "📊 Market Reaction\n"
-    msg += f"USD Bias: {usd_bias}\n"
-    msg += f"Gold Bias: {gold_bias}\n"
+    msg += "📌 Event Impact\n"
+    msg += f"Event Bias: {event_bias}\n"
+    msg += f"Event Score: {event_score}\n\n"
+
+    msg += "📊 Market Confirmation\n"
     msg += f"DXY: {dxy_change}%\n"
     msg += f"US10Y: {us10y_change}%\n"
-    msg += f"Total Score: {total_score}\n\n"
+    msg += f"Market Score: {market_score}\n\n"
+
+    msg += "🎯 Final Decision\n"
+    msg += f"Final Score: {final_score}\n"
+    msg += f"Confidence: {confidence}%\n"
+    msg += f"Bias: {final_bias}\n"
     msg += f"Action: {action}\n\n"
 
     msg += "⚠️ Không vào lệnh ngay khi tin vừa ra. Chờ spread ổn, nến xác nhận."
