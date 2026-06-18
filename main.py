@@ -1017,7 +1017,7 @@ def main():
     print(f"EVENTS_FOUND={len(events)}")
     print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
 
-    if MODE == "auto"
+    if MODE == "auto":
 
         gold_news_update(state)
 
