@@ -677,25 +677,32 @@ def market_bias_engine(news_score=0):
     yield_score = 0
 
     if dxy_change >= 0.5:
-        dollar_score = -3
+        dollar_score = -5
     elif dxy_change >= 0.3:
+        dollar_score = -4
+    elif dxy_change >= 0.15:
         dollar_score = -2
-    elif dxy_change >= 0.1:
-        dollar_score = -1
     elif dxy_change <= -0.5:
-        dollar_score = 3
+        dollar_score = 5
     elif dxy_change <= -0.3:
+        dollar_score = 4
+    elif dxy_change <= -0.15:
         dollar_score = 2
-    elif dxy_change <= -0.1:
-        dollar_score = 1
-    if us10y_change <= -0.3:
-        yield_score = 3
+
+    if us10y_change >= 0.5:
+        yield_score = -5
     elif us10y_change >= 0.3:
-        yield_score = -3
-    elif us10y_change <= -0.1:
-        yield_score = 2
-    elif us10y_change >= 0.1:
+        yield_score = -4
+    elif us10y_change >= 0.15:
         yield_score = -2
+    elif us10y_change <= -0.5:
+        yield_score = 5
+    elif us10y_change <= -0.3:
+        yield_score = 4
+    elif us10y_change <= -0.15:
+        yield_score = 2
+    else:
+        yield_score = 0 
 
     total_score = news_score + dollar_score + yield_score
     return {
