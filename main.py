@@ -528,22 +528,30 @@ def clamp_score(score, min_value=-4, max_value=4):
 
 
 def calculate_probability(total_score):
-    if total_score >= 12:
-        buy_prob = 90
-    elif total_score >= 8:
-        buy_prob = 80
-    elif total_score >= 4:
-        buy_prob = 65
-    elif total_score <= -12:
-        buy_prob = 10
-    elif total_score <= -8:
-        buy_prob = 20
-    elif total_score <= -4:
-        buy_prob = 35
+
+    if total_score >= 6:
+        buy_prob = 85
+
+    elif total_score >= 3:
+        buy_prob = 70
+
+    elif total_score >= 1:
+        buy_prob = 60
+
+    elif total_score <= -6:
+        buy_prob = 15
+
+    elif total_score <= -3:
+        buy_prob = 30
+
+    elif total_score <= -1:
+        buy_prob = 40
+
     else:
         buy_prob = 50
 
     sell_prob = 100 - buy_prob
+
     return buy_prob, sell_prob
 def get_market_signal():
     result = {
