@@ -841,10 +841,14 @@ def daily_gold_bias(events, state, force=False):
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
     msg += f"🔴 SELL Probability: {sell_prob}%\n"
 
-    if total_score >= 4:
-        action = "🟢 ACTION: BUY ZONE"
-    elif total_score <= -4:
-        action = "🔴 ACTION: SELL ZONE"
+    if total_score >= 5:
+        action = "🟢 ACTION: STRONG BUY ZONE"
+    elif total_score >= 2:
+        action = "🟢 ACTION: BUY WATCH"
+    elif total_score <= -5:
+        action = "🔴 ACTION: STRONG SELL ZONE"
+    elif total_score <= -2:
+        action = "🔴 ACTION: SELL WATCH"
     else:
         action = "⚪ ACTION: WAIT"
 
