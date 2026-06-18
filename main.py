@@ -1190,7 +1190,7 @@ def main():
 
         print("AUTO MODE START")
 
-        daily_gold_bias(events, state, force=True)
+        daily_gold_bias(events, state, force=False)
 
         check_events(events, state)
 
