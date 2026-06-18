@@ -729,7 +729,7 @@ def daily_gold_bias(events, state, force=False):
 
     if fomc_risk:
         risk_level = "VERY HIGH"
-        confidence = 50
+        confidence = min(50 + abs(total_score) * 10, 95)
         primary_bias = "WAIT BEFORE FOMC"
         bias_icon = "⚪"
     else:
