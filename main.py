@@ -1064,11 +1064,9 @@ def main():
     print(f"EVENTS_FOUND={len(events)}")
     print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
 
+    
+
     if MODE == "auto":
-
-        check_events(events, state)
-
-    elif MODE == "auto":
         print("AUTO MODE START")
 
         send_telegram("✅ AUTO TEST OK - bot đang chạy đúng MODE auto")
