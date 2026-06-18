@@ -779,7 +779,8 @@ def score_fomc_from_news(news):
 
     return score
 def daily_gold_bias(events, state, force=False):
-    today = datetime.now(JST).strftime("%Y-%m-%d")
+    now = datetime.now(JST)
+    today = now.strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
 
     if not force and already_sent(state, key):
@@ -788,87 +789,86 @@ def daily_gold_bias(events, state, force=False):
 
     selected_events = target_events(events)
     news = get_gold_news(limit=6)
-    market = get_market_signal()
-    print("CALLING MARKET_BIAS_ENGINE")
-    test_market = market_bias_engine(0)
-    print(test_market)
-    if market.get("dxy_change") is None:
-        market["dxy_change"] = 0
-
-    if market.get("us10y_change") is None:
-        market["us10y_change"] = 0
 
     economic_score = 0
-    fomc_news_score = score_fomc_from_news(news)
     news_score = 0
     fomc_risk = False
 
+    fomc_news_score = score_fomc_from_news(news)
+
     for e in selected_events:
-        bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
+        bias, score = gold_bias_from_event(
+            e["title"],
+            e["actual"],
+            e["forecast"]
+        )
+
         economic_score += score
 
         title_l = e["title"].lower()
-        if "fomc" in title_l or "federal funds" in title_l or "powell" in title_l:
+        if (
+            "fomc" in title_l
+            or "federal funds" in title_l
+            or "powell" in title_l
+        ):
             fomc_risk = True
 
     for item in news:
-        news_score += item["score"]
+        news_score += item.get("score", 0)
 
-    # V6 Market Bias Engine
-    market_v6 = market_bias_engine(news_score)
-
-    news_score = clamp_score(news_score)
-    dollar_score = clamp_score(market_v6["dollar_score"])
-    yield_score = clamp_score(market_v6["yield_score"])
-
-    market["dxy_change"] = market_v6["dxy_change"]
-    market["us10y_change"] = market_v6["us10y_change"]
-
-    economic_score = 0
-
-    if fomc_risk:
+    if fomc_risk and economic_score == 0:
         economic_score += fomc_news_score
 
-    total_score = economic_score + news_score + dollar_score + yield_score
+    economic_score = clamp_score(economic_score)
+    news_score = clamp_score(news_score)
 
-    strength = (
-        abs(economic_score)
-        + abs(news_score)
-        + abs(dollar_score)
-        + abs(yield_score)
-    )
-    
-    confidence = min(95, 50 + abs(total_score) * 5)
-    
+    market_v6 = market_bias_engine(news_score)
+
+    dollar_score = clamp_score(market_v6.get("dollar_score", 0))
+    yield_score = clamp_score(market_v6.get("yield_score", 0))
+
+    dxy_change = market_v6.get("dxy_change", 0)
+    us10y_change = market_v6.get("us10y_change", 0)
+
+    total_score = economic_score + news_score + dollar_score + yield_score
+    total_score = clamp_score(total_score, -10, 10)
+
+    buy_prob, sell_prob = calculate_probability(total_score)
+
+    confidence = max(buy_prob, sell_prob)
+
     if fomc_risk:
         risk_level = "VERY HIGH"
+    elif abs(total_score) >= 5:
+        risk_level = "HIGH"
+    elif abs(total_score) >= 3:
+        risk_level = "MEDIUM"
     else:
-        if abs(total_score) >= 5:
-            risk_level = "HIGH"
-        elif abs(total_score) >= 3:
-            risk_level = "MEDIUM"
-        else:
-            risk_level = "LOW"
+        risk_level = "LOW"
 
     if total_score >= 5:
         primary_bias = "BUY GOLD BIAS"
         bias_icon = "🟢"
+        action = "🟢 ACTION: STRONG BUY ZONE"
     elif total_score >= 2:
         primary_bias = "BUY GOLD nhẹ"
         bias_icon = "🟢"
+        action = "🟢 ACTION: BUY WATCH"
     elif total_score <= -5:
         primary_bias = "SELL GOLD BIAS"
         bias_icon = "🔴"
+        action = "🔴 ACTION: STRONG SELL ZONE"
     elif total_score <= -2:
         primary_bias = "SELL GOLD nhẹ"
         bias_icon = "🔴"
+        action = "🔴 ACTION: SELL WATCH"
     else:
         primary_bias = "WAIT / chưa rõ"
         bias_icon = "⚪"
+        action = "⚪ ACTION: WAIT"
 
-    
     msg = "📊 GOLD DAILY INTELLIGENCE V4\n\n"
-    msg += f"🕒 Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
+    msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n"
     msg += f"⚠️ Risk Level: {risk_level}\n\n"
     msg += "══════════════════════\n\n"
 
@@ -878,9 +878,18 @@ def daily_gold_bias(events, state, force=False):
         msg += "⚪ Không có tin USD High Impact quan trọng trong khung gần.\n\n"
     else:
         for e in selected_events:
-            bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
+            bias, score = gold_bias_from_event(
+                e["title"],
+                e["actual"],
+                e["forecast"]
+            )
+
+            event_time = "-"
+            if e.get("jst"):
+                event_time = e["jst"].strftime("%m-%d %H:%M JST")
+
             msg += f"🇺🇸 {e['title']}\n"
-            msg += f"Time: {e['jst'].strftime('%m-%d %H:%M JST')}\n"
+            msg += f"Time: {event_time}\n"
             msg += f"Forecast: {e['forecast']} | Previous: {e['previous']} | Actual: {e['actual']}\n"
             msg += f"Impact: {bias}\n"
             msg += f"Score: {score}\n\n"
@@ -892,10 +901,12 @@ def daily_gold_bias(events, state, force=False):
         msg += "⚪ Chưa lấy được headline mới.\n\n"
     else:
         for item in news[:5]:
-            if item["score"] > 0:
+            score = item.get("score", 0)
+
+            if score > 0:
                 icon = "🟢"
                 impact = "Bullish Gold"
-            elif item["score"] < 0:
+            elif score < 0:
                 icon = "🔴"
                 impact = "Bearish Gold"
             else:
@@ -903,7 +914,11 @@ def daily_gold_bias(events, state, force=False):
                 impact = "Neutral"
 
             title_show = item.get("vi_title", item.get("title", ""))
+            source = item.get("source", "")
+
             msg += f"{icon} {title_show}\n"
+            if source:
+                msg += f"Nguồn: {source}\n"
             msg += f"Impact: {impact}\n\n"
 
     msg += "══════════════════════\n\n"
@@ -912,25 +927,12 @@ def daily_gold_bias(events, state, force=False):
     msg += f"News Score: {news_score}\n"
     msg += f"Dollar Score: {dollar_score}\n"
     msg += f"Yield Score: {yield_score}\n"
-    msg += f"DXY Change: {market['dxy_change']}%\n"
-    msg += f"US10Y Change: {market['us10y_change']}\n"
+    msg += f"DXY Change: {dxy_change}%\n"
+    msg += f"US10Y Change: {us10y_change}%\n"
     msg += f"Total Gold Score: {total_score}\n\n"
-    buy_prob, sell_prob = calculate_probability(total_score)
     msg += f"🎯 Confidence: {confidence}%\n"
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
     msg += f"🔴 SELL Probability: {sell_prob}%\n"
-
-    if total_score >= 5:
-        action = "🟢 ACTION: STRONG BUY ZONE"
-    elif total_score >= 2:
-        action = "🟢 ACTION: BUY WATCH"
-    elif total_score <= -5:
-        action = "🔴 ACTION: STRONG SELL ZONE"
-    elif total_score <= -2:
-        action = "🔴 ACTION: SELL WATCH"
-    else:
-        action = "⚪ ACTION: WAIT"
-
     msg += f"{action}\n\n"
 
     msg += "══════════════════════\n\n"
@@ -940,7 +942,7 @@ def daily_gold_bias(events, state, force=False):
     if fomc_risk:
         msg += "Kịch bản FOMC:\n"
         msg += "- Trước / trong FOMC: ưu tiên WAIT, không ép lệnh.\n"
-        msg += "- Chỉ giao dịch sau khi giá phản ứng rõ với tin.\n"
+        msg += "- Chỉ giao dịch sau khi giá phản ứng rõ với tin.\n\n"
 
     if total_score >= 3:
         msg += "Kịch bản ưu tiên: BUY bias. Chờ giá hồi về hỗ trợ rồi tìm BUY theo nến xác nhận.\n"
@@ -953,11 +955,12 @@ def daily_gold_bias(events, state, force=False):
     msg += "⚠️ Đây là mô hình bias, không phải lệnh vào trực tiếp.\n"
     msg += "Cần thêm phản ứng giá, spread và nến xác nhận."
 
-    last_score_key = "last_total_score"
+    last_score_key = "last_daily_total_score"
     last_total_score = state.get(last_score_key)
 
-    if last_total_score == total_score and not force:
-        print("NO CHANGE - SKIP TELEGRAM")
+    if not force and last_total_score == total_score:
+        print("Daily score unchanged, skip telegram")
+        mark_sent(state, key)
         return
 
     send_telegram(msg)
