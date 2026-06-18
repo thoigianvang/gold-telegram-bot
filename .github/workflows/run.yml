@@ -10,32 +10,33 @@ on:
     - cron: '0 22 * * *'       # 07:00 JST Daily Bias
     - cron: '0 0,4,8 * * *'    # 09:00 / 13:00 / 17:00 JST Gold News
     - cron: '*/15 * * * *'     # Check economic news every 15 min
-
 jobs:
-  daily-bias:
-    if: ${{ github.event.schedule == '0 22 * * *' }}
+
+  run-bot:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - run: pip install -r requirements.txt
 
-      - name: Daily Gold Bias
+      - name: Run Bot
         run: python main.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-          MODE: bias
+          MODE: auto
 
       - name: Save State
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add sent.json
-          git commit -m "Update sent state" || echo "No changes"
+          git commit -m "Update state" || echo "No changes"
           git pull --rebase || true
           git push || true
 
