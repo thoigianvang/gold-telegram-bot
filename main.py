@@ -167,44 +167,34 @@ def event_key(e):
 
 
 def gold_bias_from_event(title, actual, forecast):
-    a = to_number(actual)
-    f = to_number(forecast)
+    title_l = str(title).lower()
+    actual_s = str(actual).strip()
+    forecast_s = str(forecast).strip()
 
-    if a is None or f is None:
+    if actual_s in ["", "-", "None", "null"]:
         return "⏳ Chưa có Actual", 0
 
-    t = title.lower()
+    try:
+        a = float(actual_s.replace("%", "").replace(",", ""))
+        f = float(forecast_s.replace("%", "").replace(",", ""))
 
-    inflation = [
-        "cpi", "ppi", "retail sales",
-        "interest rate", "federal funds",
-        "gdp", "ism", "pmi",
-    ]
+        if "federal funds" in title_l or "interest rate" in title_l:
+            if a > f:
+                return "🔴 Hawkish Fed / SELL GOLD", -5
+            elif a < f:
+                return "🟢 Dovish Fed / BUY GOLD", 5
+            else:
+                return "⚪ Đúng forecast / WAIT", 0
 
-    jobs = [
-        "non-farm", "nonfarm", "nfp",
-        "adp", "jolts",
-    ]
-
-    if any(x in t for x in inflation):
         if a > f:
-            return "🔴 SELL GOLD - USD mạnh hơn dự báo", -3
-        if a < f:
-            return "🟢 BUY GOLD - USD yếu hơn dự báo", 3
+            return "🔴 USD mạnh / SELL GOLD", -2
+        elif a < f:
+            return "🟢 USD yếu / BUY GOLD", 2
+        else:
+            return "⚪ Đúng forecast / WAIT", 0
 
-    if any(x in t for x in jobs):
-        if a > f:
-            return "🔴 SELL GOLD - dữ liệu việc làm mạnh", -3
-        if a < f:
-            return "🟢 BUY GOLD - dữ liệu việc làm yếu", 3
-
-    if "unemployment" in t:
-        if a > f:
-            return "🟢 BUY GOLD - thất nghiệp cao hơn dự báo", 2
-        if a < f:
-            return "🔴 SELL GOLD - thất nghiệp thấp hơn dự báo", -2
-
-    return "⚪ WAIT / NO TRADE", 0
+    except:
+        return "⚪ Không đọc được Actual", 0
 
 
 def score_news_title(title):
@@ -637,6 +627,25 @@ def market_bias_engine(news_score=0):
         "yield_score": yield_score,
         "total": total
     }
+def score_fomc_from_news(news):
+    score = 0
+
+    for item in news:
+        title = item.get("title", "").lower()
+
+        if "hawkish fed" in title or "rate hike" in title or "higher for longer" in title:
+            score -= 4
+
+        if "dovish fed" in title or "rate cut" in title or "weaker dollar" in title:
+            score += 4
+
+        if "fed" in title and "yield" in title and "rise" in title:
+            score -= 3
+
+        if "fed" in title and "yield" in title and "fall" in title:
+            score += 3
+
+    return score
 def daily_gold_bias(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
@@ -658,6 +667,7 @@ def daily_gold_bias(events, state, force=False):
         market["us10y_change"] = 0
 
     economic_score = 0
+    fomc_news_score = score_fomc_from_news(news)
     news_score = 0
     fomc_risk = False
 
@@ -681,6 +691,9 @@ def daily_gold_bias(events, state, force=False):
 
     market["dxy_change"] = market_v6["dxy_change"]
     market["us10y_change"] = market_v6["us10y_change"]
+
+    if economic_score == 0 and fomc_risk:
+    economic_score += fomc_news_score
 
     total_score = economic_score + news_score + dollar_score + yield_score
 
@@ -799,6 +812,7 @@ def daily_gold_bias(events, state, force=False):
 
     send_telegram(msg)
     mark_sent(state, key)
+
 def check_events(events, state):
 
     now = datetime.now(JST)
