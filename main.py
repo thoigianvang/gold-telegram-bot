@@ -1017,16 +1017,22 @@ def main():
     print(f"EVENTS_FOUND={len(events)}")
     print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
 
-    if MODE == "daily":
+    if MODE == "auto":
+
+        gold_news_update(state)
+
+        check_events(events, state)
+
+    elif MODE == "daily":
+
         daily_report(events, state)
 
     elif MODE == "check":
+
         check_events(events, state)
 
-    elif MODE == "test":
-        manual_test(events, state)
-
     elif MODE == "news":
+
         gold_news_update(state)
 
     elif MODE == "bias":
