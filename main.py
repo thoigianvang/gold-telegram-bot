@@ -10,7 +10,7 @@ from urllib.parse import quote_plus
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
-
+BOT_VERSION = "V3.0 STABLE"
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
 STATE_FILE = "sent.json"
 
@@ -1145,6 +1145,14 @@ def session_report(events, state, session_name, total_score=None):
         )
 
     buy_prob, sell_prob = calculate_probability(total_score)
+    if abs(total_score) >= 8:
+        risk_level = "EXTREME"
+    elif abs(total_score) >= 5:
+        risk_level = "HIGH"
+    elif abs(total_score) >= 3:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "LOW"
 
     # Warning logic
     warnings = []
@@ -1211,8 +1219,9 @@ def session_report(events, state, session_name, total_score=None):
             remaining_today_events.append(e)
 
     # Message
-    msg = f"🌍 SESSION REPORT V3 - {session_name}\n\n"
-    msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n\n"
+    msg = f"🌍 SESSION REPORT {BOT_VERSION} - {session_name}\n\n"
+    msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n"
+    msg += f"⚠️ Risk Level: {risk_level}\n\n"
 
     msg += "📊 MARKET\n"
     msg += f"DXY: {dxy_change}%\n"
@@ -1392,7 +1401,7 @@ def daily_gold_bias(events, state, force=False):
         action = "⚪ ACTION: WAIT"
         scenario = "Kịch bản ưu tiên: WAIT. Điểm chưa đủ mạnh, không ép lệnh.\n"
 
-    msg = "📊 GOLD DAILY INTELLIGENCE V4\n\n"
+    msg = f"📊 GOLD DAILY INTELLIGENCE {BOT_VERSION}\n\n"
     msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n"
     msg += f"⚠️ Risk Level: {risk_level}\n\n"
     msg += "══════════════════════\n\n"
