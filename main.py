@@ -1211,10 +1211,8 @@ def manual_test(events, state):
     daily_gold_bias(events, state, force=True)
 
 def main():
-    send_telegram("✅ MAIN START")
     state = load_state()
     events = get_events()
-
     now = datetime.now(JST)
 
     print(f"MODE={MODE}")
@@ -1222,59 +1220,37 @@ def main():
     print(f"NOW_JST={now.strftime('%Y-%m-%d %H:%M:%S')}")
 
     if MODE == "auto":
-
         print("AUTO MODE START")
-
-        if now.hour == 7 and now.minute < 15:
-            daily_report(events, state)
 
         daily_gold_bias(events, state, force=False)
 
         check_events(events, state)
 
+        if now.hour == 7 and now.minute < 15:
+            daily_report(events, state)
+
         if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
 
-    elif MODE == "actual_test":
-
-        print("ACTUAL TEST MODE START")
-        send_telegram("✅ ACTUAL TEST MODE ĐÃ CHẠY")
-
-        fake_event = {
-            "title": "Core CPI m/m",
-            "actual": "0.5",
-            "forecast": "0.3",
-            "previous": "0.2",
-            "jst": now
-        }
-
-        market_v6 = market_bias_engine(-4)
-        msg = format_actual_alert(fake_event, market_v6)
-
-        print("SENDING ACTUAL TEST ALERT")
-        send_telegram(msg)
     elif MODE == "daily":
-
         daily_report(events, state)
 
     elif MODE == "check":
-
         check_events(events, state)
 
     elif MODE == "news":
-
         gold_news_update(state)
 
     elif MODE == "bias":
+        daily_gold_bias(events, state, force=True)
 
-        daily_gold_bias(events, state)
+    elif MODE == "test":
+        manual_test(events, state)
 
     else:
-
         send_telegram(f"❌ Unknown MODE: {MODE}")
 
     save_state(state)
-    print("FILE LOADED OK")
     try:
         main()
 
