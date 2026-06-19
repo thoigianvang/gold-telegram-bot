@@ -888,7 +888,77 @@ def session_alert(state, total_score):
     msg += "⚠️ Đây là cảnh báo phiên, không phải lệnh vào trực tiếp."
 
     send_telegram(msg)
-    mark_sent(state, session_key)   
+    mark_sent(state, session_key)
+def session_report(events, state, session_name, total_score=None):
+    now = datetime.now(JST)
+    key = f"session_report_{session_name}_{now.strftime('%Y-%m-%d')}_{now.hour}"
+
+    if already_sent(state, key):
+        print(f"{session_name} session already sent.")
+        return
+
+    news = get_gold_news(limit=5)
+    news_score = sum(item.get("score", 0) for item in news)
+    market_v6 = market_bias_engine(news_score)
+
+    dollar_score = clamp_score(market_v6.get("dollar_score", 0))
+    yield_score = clamp_score(market_v6.get("yield_score", 0))
+
+    dxy_change = market_v6.get("dxy_change", 0)
+    us10y_change = market_v6.get("us10y_change", 0)
+
+    if total_score is None:
+        total_score = clamp_score(news_score + dollar_score + yield_score, -10, 10)
+
+    buy_prob, sell_prob = calculate_probability(total_score)
+
+    if total_score >= 3:
+        bias = "🟢 BUY GOLD"
+        action = "Chờ hồi về hỗ trợ rồi tìm BUY theo nến xác nhận."
+    elif total_score <= -3:
+        bias = "🔴 SELL GOLD"
+        action = "Chờ hồi lên kháng cự rồi tìm SELL theo nến xác nhận."
+    else:
+        bias = "⚪ WAIT"
+        action = "Điểm chưa đủ mạnh. Không ép lệnh."
+
+    upcoming = []
+    for e in events:
+        if e.get("jst"):
+            minutes = (e["jst"] - now).total_seconds() / 60
+            if 0 <= minutes <= 720:
+                upcoming.append(e)
+
+    msg = f"🌍 SESSION REPORT - {session_name}\n\n"
+    msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n\n"
+
+    msg += "📊 MARKET\n"
+    msg += f"DXY: {dxy_change}%\n"
+    msg += f"US10Y: {us10y_change}%\n"
+    msg += f"News Score: {news_score}\n"
+    msg += f"Dollar Score: {dollar_score}\n"
+    msg += f"Yield Score: {yield_score}\n"
+    msg += f"Total Score: {total_score}\n\n"
+
+    msg += "🎯 BIAS\n"
+    msg += f"{bias}\n"
+    msg += f"BUY Probability: {buy_prob}%\n"
+    msg += f"SELL Probability: {sell_prob}%\n\n"
+
+    msg += "🗓 TIN SẮP TỚI\n"
+    if not upcoming:
+        msg += "Không có tin USD quan trọng trong 12 giờ tới.\n\n"
+    else:
+        for e in upcoming[:5]:
+            msg += f"- {e['title']} | {e['jst'].strftime('%H:%M JST')}\n"
+            msg += f"  Forecast: {e['forecast']} | Previous: {e['previous']}\n"
+
+    msg += "\n📌 KỊCH BẢN\n"
+    msg += action
+    msg += "\n\n⚠️ Đây là báo cáo phiên, không phải lệnh vào trực tiếp."
+
+    send_telegram(msg)
+    mark_sent(state, key)
 def daily_gold_bias(events, state, force=False):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
@@ -1231,6 +1301,14 @@ def main():
 
         if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
+        if now.hour == 9 and now.minute < 15:
+            session_report(events, state, "PHIÊN Á")
+
+        if now.hour == 16 and now.minute < 15:
+            session_report(events, state, "PHIÊN ÂU")
+
+        if now.hour == 21 and now.minute < 15:
+            session_report(events, state, "PHIÊN MỸ")
 
     elif MODE == "daily":
         daily_report(events, state)
