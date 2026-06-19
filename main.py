@@ -930,7 +930,7 @@ def get_gold_trend_signal():
             try:
                 temp = yf.download(
                     symbol,
-                    period="30d",
+                    period="90d",
                     interval="1h",
                     progress=False,
                     auto_adjust=False
@@ -952,7 +952,7 @@ def get_gold_trend_signal():
                 "ema50": 0,
                 "ema200": 0,
                 "trend": "NO_DATA",
-                "trend_score": -2
+                "trend_score": -1
             }
 
         close = df["Close"]
@@ -970,7 +970,7 @@ def get_gold_trend_signal():
                 "ema50": 0,
                 "ema200": 0,
                 "trend": "NOT_ENOUGH_DATA",
-                "trend_score": -2
+                "trend_score": -1
             }
 
         price = float(close.iloc[-1])
@@ -980,19 +980,19 @@ def get_gold_trend_signal():
 
         if price > ema20 > ema50 > ema200:
             trend = "STRONG_UPTREND"
-            trend_score = 4
+            trend_score = 2
 
         elif price > ema20 and ema20 > ema50:
             trend = "UPTREND"
-            trend_score = 2
+            trend_score = 1
 
         elif price < ema20 < ema50 < ema200:
             trend = "STRONG_DOWNTREND"
-            trend_score = -4
+            trend_score = -2
 
         elif price < ema20 and ema20 < ema50:
             trend = "DOWNTREND"
-            trend_score = -2
+            trend_score = -1
 
         elif price > ema20 and price < ema50:
             trend = "RECOVERY_BUT_WEAK"
@@ -1026,9 +1026,8 @@ def get_gold_trend_signal():
             "ema50": 0,
             "ema200": 0,
             "trend": "ERROR",
-            "trend_score": -2
+            "trend_score": -1
         }
-
 
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
