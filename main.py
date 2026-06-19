@@ -948,7 +948,10 @@ def session_report(events, state, session_name, total_score=None):
 
     session_events = []
     remaining_today_events = []
+    print("===== EVENTS =====")
 
+    for e in events:
+        print(e)
     for e in events:
         if not e.get("jst"):
             continue
@@ -968,6 +971,10 @@ def session_report(events, state, session_name, total_score=None):
 
     msg = f"🌍 SESSION REPORT V2 - {session_name}\n\n"
     msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n\n"
+
+    msg += f"DEBUG EVENTS FOUND: {len(events)}\n"
+    msg += f"SESSION EVENTS: {len(session_events)}\n"
+    msg += f"REMAIN EVENTS: {len(remaining_today_events)}\n\n"
 
     msg += "📊 MARKET\n"
     msg += f"DXY: {dxy_change}%\n"
@@ -1016,6 +1023,8 @@ def daily_gold_bias(events, state, force=False):
         return
 
     selected_events = target_events(events)
+    print("SELECTED EVENTS:")
+    print(selected_events)
     news = get_gold_news(limit=6)
 
     economic_score = 0
@@ -1341,7 +1350,7 @@ def main():
         
 
         daily_gold_bias(events, state, force=False)
-        session_report(events, state, "TEST PHIÊN")
+        session_report(events, state, "TEST DEBUG")
         check_events(events, state)
         if now.hour == 9 and now.minute < 15:
             session_report(events, state, "PHIÊN Á")
