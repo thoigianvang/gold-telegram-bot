@@ -1484,6 +1484,7 @@ def check_bias_reversal(state, total_score):
 
     state["last_bias_score"] = total_score       
 def manual_test(events, state):
+     session_report(events, state, "TEST TREND")
 
     msg = "✅ BOT TEST OK\n\n"
 
@@ -1510,25 +1511,14 @@ def main():
 
     if MODE == "auto":
         print("AUTO MODE START")
-        
 
         daily_gold_bias(events, state, force=False)
-        
+
         check_events(events, state)
-        if now.hour == 9 and now.minute < 15:
-            session_report(events, state, "PHIÊN Á")
-
-        if now.hour == 16 and now.minute < 15:
-            session_report(events, state, "PHIÊN ÂU")
-
-        if now.hour == 21 and now.minute < 15:
-            session_report(events, state, "PHIÊN MỸ")
 
         if now.hour == 7 and now.minute < 15:
             daily_report(events, state)
 
-        if now.hour in [9, 13, 17] and now.minute < 15:
-            gold_news_update(state)
         if now.hour == 9 and now.minute < 15:
             session_report(events, state, "PHIÊN Á")
 
@@ -1537,6 +1527,9 @@ def main():
 
         if now.hour == 21 and now.minute < 15:
             session_report(events, state, "PHIÊN MỸ")
+
+        if now.hour in [9, 13, 17] and now.minute < 15:
+            gold_news_update(state)
 
     elif MODE == "daily":
         daily_report(events, state)
