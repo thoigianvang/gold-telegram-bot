@@ -1621,7 +1621,7 @@ def manual_test(events, state):
 
      send_telegram(msg)
 
-     daily_gold_bias(events, state, force=True)
+     
 
 def main():
     state = load_state()
@@ -1632,25 +1632,37 @@ def main():
     print(f"EVENTS_FOUND={len(events)}")
     print(f"NOW_JST={now.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    if MODE == "auto":
+    # TEST MODE
+    if MODE == "test":
+        manual_test(events, state)
+        save_state(state)
+        return
+
+    # AUTO MODE
+    elif MODE == "auto":
         print("AUTO MODE START")
 
         daily_gold_bias(events, state, force=False)
 
         check_events(events, state)
 
+        # Báo cáo đầu ngày
         if now.hour == 7 and now.minute < 15:
             daily_report(events, state)
 
+        # Báo cáo phiên Á
         if now.hour == 9 and now.minute < 15:
             session_report(events, state, "PHIÊN Á")
 
+        # Báo cáo phiên Âu
         if now.hour == 16 and now.minute < 15:
             session_report(events, state, "PHIÊN ÂU")
 
+        # Báo cáo phiên Mỹ
         if now.hour == 21 and now.minute < 15:
             session_report(events, state, "PHIÊN MỸ")
 
+        # Cập nhật tin vàng trong ngày
         if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
 
@@ -1666,14 +1678,10 @@ def main():
     elif MODE == "bias":
         daily_gold_bias(events, state, force=True)
 
-    elif MODE == "test":
-        manual_test(events, state)
-
     else:
         send_telegram(f"❌ Unknown MODE: {MODE}")
 
     save_state(state)
-
 
 try:
     main()
