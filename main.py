@@ -891,14 +891,25 @@ def session_alert(state, total_score):
     mark_sent(state, session_key)
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
-    key = f"session_report_{session_name}_{now.strftime('%Y-%m-%d')}_{now.hour}"
+    today = now.strftime("%Y-%m-%d")
+    key = f"session_report_{session_name}_{today}_{now.hour}"
 
     if already_sent(state, key):
         print(f"{session_name} session already sent.")
         return
 
-    news = get_gold_news(limit=5)
+    if session_name == "PHIÊN Á":
+        session_end_hour = 16
+    elif session_name == "PHIÊN ÂU":
+        session_end_hour = 21
+    elif session_name == "PHIÊN MỸ":
+        session_end_hour = 24
+    else:
+        session_end_hour = now.hour + 6
+
+    news = get_gold_news(limit=6)
     news_score = sum(item.get("score", 0) for item in news)
+
     market_v6 = market_bias_engine(news_score)
 
     dollar_score = clamp_score(market_v6.get("dollar_score", 0))
@@ -912,24 +923,50 @@ def session_report(events, state, session_name, total_score=None):
 
     buy_prob, sell_prob = calculate_probability(total_score)
 
-    if total_score >= 3:
-        bias = "🟢 BUY GOLD"
-        action = "Chờ hồi về hỗ trợ rồi tìm BUY theo nến xác nhận."
-    elif total_score <= -3:
-        bias = "🔴 SELL GOLD"
-        action = "Chờ hồi lên kháng cự rồi tìm SELL theo nến xác nhận."
+    conflict_warning = ""
+
+    if dollar_score <= -3 and yield_score >= 3:
+        conflict_warning = "⚠️ DXY tăng nhưng US10Y giảm. Tín hiệu xung đột, chỉ WATCH.\n\n"
+    elif dollar_score >= 3 and yield_score <= -3:
+        conflict_warning = "⚠️ DXY giảm nhưng US10Y tăng. Tín hiệu xung đột, chỉ WATCH.\n\n"
+
+    if total_score >= 5:
+        bias = "🟢 STRONG BUY GOLD"
+        action = "BUY bias mạnh. Chờ giá hồi về hỗ trợ rồi tìm BUY theo nến xác nhận."
+    elif total_score >= 2:
+        bias = "🟢 BUY GOLD nhẹ"
+        action = "BUY bias nhẹ. Chỉ BUY khi giá hồi về hỗ trợ và có nến xác nhận."
+    elif total_score <= -5:
+        bias = "🔴 STRONG SELL GOLD"
+        action = "SELL bias mạnh. Chờ giá hồi lên kháng cự rồi tìm SELL theo nến xác nhận."
+    elif total_score <= -2:
+        bias = "🔴 SELL GOLD nhẹ"
+        action = "SELL bias nhẹ. Chỉ SELL khi giá hồi lên kháng cự và có nến xác nhận."
     else:
         bias = "⚪ WAIT"
         action = "Điểm chưa đủ mạnh. Không ép lệnh."
 
-    upcoming = []
-    for e in events:
-        if e.get("jst"):
-            minutes = (e["jst"] - now).total_seconds() / 60
-            if 0 <= minutes <= 720:
-                upcoming.append(e)
+    session_events = []
+    remaining_today_events = []
 
-    msg = f"🌍 SESSION REPORT - {session_name}\n\n"
+    for e in events:
+        if not e.get("jst"):
+            continue
+
+        event_time = e["jst"]
+
+        if event_time.date() != now.date():
+            continue
+
+        if event_time < now:
+            continue
+
+        if event_time.hour < session_end_hour:
+            session_events.append(e)
+        else:
+            remaining_today_events.append(e)
+
+    msg = f"🌍 SESSION REPORT V2 - {session_name}\n\n"
     msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n\n"
 
     msg += "📊 MARKET\n"
@@ -945,15 +982,25 @@ def session_report(events, state, session_name, total_score=None):
     msg += f"BUY Probability: {buy_prob}%\n"
     msg += f"SELL Probability: {sell_prob}%\n\n"
 
-    msg += "🗓 TIN SẮP TỚI\n"
-    if not upcoming:
-        msg += "Không có tin USD quan trọng trong 12 giờ tới.\n\n"
-    else:
-        for e in upcoming[:5]:
-            msg += f"- {e['title']} | {e['jst'].strftime('%H:%M JST')}\n"
-            msg += f"  Forecast: {e['forecast']} | Previous: {e['previous']}\n"
+    msg += conflict_warning
 
-    msg += "\n📌 KỊCH BẢN\n"
+    msg += "🗓 TIN ẢNH HƯỞNG TRONG PHIÊN NÀY\n"
+    if not session_events:
+        msg += "Không có tin USD quan trọng trong phiên này.\n\n"
+    else:
+        for e in session_events[:5]:
+            msg += f"- {e['title']} | {e['jst'].strftime('%H:%M JST')}\n"
+            msg += f"  Forecast: {e['forecast']} | Previous: {e['previous']} | Actual: {e['actual']}\n"
+
+    msg += "\n📌 TIN CÒN LẠI TRONG NGÀY\n"
+    if not remaining_today_events:
+        msg += "Không còn tin USD quan trọng sau phiên này.\n\n"
+    else:
+        for e in remaining_today_events[:5]:
+            msg += f"- {e['title']} | {e['jst'].strftime('%H:%M JST')}\n"
+            msg += f"  Forecast: {e['forecast']} | Previous: {e['previous']} | Actual: {e['actual']}\n"
+
+    msg += "\n📌 KỊCH BẢN PHIÊN\n"
     msg += action
     msg += "\n\n⚠️ Đây là báo cáo phiên, không phải lệnh vào trực tiếp."
 
@@ -1294,7 +1341,7 @@ def main():
         
 
         daily_gold_bias(events, state, force=False)
-
+        session_report(events, state, "TEST PHIÊN")
         check_events(events, state)
         if now.hour == 9 and now.minute < 15:
             session_report(events, state, "PHIÊN Á")
