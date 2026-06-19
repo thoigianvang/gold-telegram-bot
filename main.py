@@ -991,7 +991,7 @@ def get_gold_trend_signal():
     try:
         import yfinance as yf
 
-        symbols = ["GC=F", "XAUUSD=X"]
+        symbols = ["XAUUSD=X", "GC=F"]
         df = None
         used_symbol = None
 
