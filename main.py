@@ -1496,9 +1496,9 @@ def manual_test(events, state):
 
      msg += "Telegram + GitHub Actions đang hoạt động."
 
-    send_telegram(msg)
+     send_telegram(msg)
 
-    daily_gold_bias(events, state, force=True)
+     daily_gold_bias(events, state, force=True)
 
 def main():
     state = load_state()
