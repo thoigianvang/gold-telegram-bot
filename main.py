@@ -199,18 +199,82 @@ def gold_bias_from_event(title, actual, forecast):
 
 def score_news_title(title):
     t = title.lower()
+
     score = 0
     reasons = []
 
-    for w in BUY_NEWS_WORDS:
-        if w in t:
-            score += 1
-            reasons.append("BUY")
+    strong_buy = [
+        "safe haven",
+        "geopolitical",
+        "war",
+        "conflict",
+        "fed cut",
+        "rate cut",
+        "dovish fed",
+        "dollar weak",
+        "dollar falls",
+        "yields fall",
+        "yields drop",
+        "recession fears",
+        "bank crisis"
+    ]
 
-    for w in SELL_NEWS_WORDS:
-        if w in t:
+    strong_sell = [
+        "hawkish fed",
+        "fed fuels us dollar",
+        "rate hike",
+        "higher for longer",
+        "strong dollar",
+        "dollar rises",
+        "dollar stronger",
+        "yields rise",
+        "yields higher",
+        "inflation concerns",
+        "inflation hot",
+        "strong jobs",
+        "gold falls",
+        "gold drops",
+        "gold down",
+        "gold tumbles",
+        "gold slides",
+        "gold plunges",
+        "gold implodes"
+    ]
+
+    weak_buy = [
+        "gold rebounds",
+        "gold recovers",
+        "gold gains",
+        "bullish gold"
+    ]
+
+    weak_sell = [
+        "profit taking",
+        "gold weak",
+        "bearish gold"
+    ]
+
+    for word in strong_buy:
+        if word in t:
+            score += 2
+            reasons.append(f"+2 {word}")
+
+    for word in weak_buy:
+        if word in t:
+            score += 1
+            reasons.append(f"+1 {word}")
+
+    for word in strong_sell:
+        if word in t:
+            score -= 2
+            reasons.append(f"-2 {word}")
+
+    for word in weak_sell:
+        if word in t:
             score -= 1
-            reasons.append("SELL")
+            reasons.append(f"-1 {word}")
+
+    score = max(min(score, 5), -5)
 
     return score, reasons
 
