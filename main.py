@@ -889,7 +889,7 @@ def session_alert(state, total_score):
 
     send_telegram(msg)
     mark_sent(state, session_key)
-def get_gold_trend__signal():
+def get_gold_trend_signal():
     try:
         import yfinance as yf
 
