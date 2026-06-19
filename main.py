@@ -1214,20 +1214,18 @@ def main():
     state = load_state()
     events = get_events()
 
+    now = datetime.now(JST)
+
     print(f"MODE={MODE}")
     print(f"EVENTS_FOUND={len(events)}")
-    print(f"NOW_JST={datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S')}")
-
-    
+    print(f"NOW_JST={now.strftime('%Y-%m-%d %H:%M:%S')}")
 
     if MODE == "auto":
 
-        now = datetime.now(JST)
+        print("AUTO MODE START")
 
         if now.hour == 7 and now.minute < 15:
             daily_report(events, state)
-
-        print("AUTO MODE START")
 
         daily_gold_bias(events, state, force=False)
 
@@ -1236,12 +1234,20 @@ def main():
         if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
 
-        check_events(events, state)
+    elif MODE == "actual_test":
 
-        now = datetime.now(JST)
+        fake_event = {
+            "title": "Core CPI m/m",
+            "actual": "0.5",
+            "forecast": "0.3",
+            "previous": "0.2",
+            "jst": now
+        }
 
-        if now.hour in [9,13,17] and now.minute < 15:
-            gold_news_update(state)
+        market_v6 = market_bias_engine(-4)
+        msg = format_actual_alert(fake_event, market_v6)
+        send_telegram(msg)
+
     elif MODE == "daily":
 
         daily_report(events, state)
@@ -1262,19 +1268,4 @@ def main():
 
         send_telegram(f"❌ Unknown MODE: {MODE}")
 
-        save_state(state)
-try:
-
-    main()
-
-except Exception as e:
-
-    print("ERROR:", str(e))
-
-    try:
-
-        send_telegram(f"❌ GOLD BOT ERROR\n\n{e}")
-
-    except Exception as send_error:
-
-        print("FAILED TO SEND ERROR:", str(send_error))
+    save_state(state)
