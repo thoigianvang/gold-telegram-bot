@@ -712,6 +712,8 @@ def market_bias_engine(news_score=0):
     "yield_score": yield_score,
     "total": total_score
     }
+    msg += f"Trend Score: {trend_score}\n"
+    msg += f"Gold Trend: {gold_trend.get('trend')}\n"
 def format_actual_alert(event, market_v6):
 
     title = event.get("title", "")
@@ -1226,11 +1228,21 @@ def daily_gold_bias(events, state, force=False):
 
     dollar_score = clamp_score(market_v6.get("dollar_score", 0))
     yield_score = clamp_score(market_v6.get("yield_score", 0))
+    gold_trend = get_gold_trend_signal()
+    trend_score = clamp_score(
+        gold_trend.get("trend_score", 0)
+    )
 
     dxy_change = market_v6.get("dxy_change", 0)
     us10y_change = market_v6.get("us10y_change", 0)
 
-    total_score = economic_score + news_score + dollar_score + yield_score
+    total_score = (
+        economic_score
+        + news_score
+        + dollar_score
+        + yield_score
+        + trend_score
+    )
     total_score = clamp_score(total_score, -10, 10)
     conflict_warning = ""
 
