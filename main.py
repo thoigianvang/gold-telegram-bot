@@ -1236,6 +1236,10 @@ def main():
 
     elif MODE == "actual_test":
 
+        send_telegram("🔥 ACTUAL TEST MODE")
+
+        return
+
         fake_event = {
             "title": "Core CPI m/m",
             "actual": "0.5",
