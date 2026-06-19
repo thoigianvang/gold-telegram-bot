@@ -890,64 +890,13 @@ def session_alert(state, total_score):
     send_telegram(msg)
     mark_sent(state, session_key)
 def get_gold_trend_signal():
-    try:
-        import yfinance as yf
-
-        df = yf.download("GC=F", period="5d", interval="1h", progress=False)
-
-        if df is None or df.empty or len(df) < 50:
-            return {
-                "price": 0,
-                "ema20": 0,
-                "ema50": 0,
-                "trend": "NO_DATA",
-                "trend_score": 0
-            }
-
-        close = df["Close"]
-
-        ema20 = close.ewm(span=20).mean().iloc[-1]
-        ema50 = close.ewm(span=50).mean().iloc[-1]
-        price = close.iloc[-1]
-
-        price = float(price)
-        ema20 = float(ema20)
-        ema50 = float(ema50)
-
-        if price > ema20 > ema50:
-            trend = "UPTREND"
-            trend_score = 3
-        elif price < ema20 < ema50:
-            trend = "DOWNTREND"
-            trend_score = -3
-        elif price > ema20:
-            trend = "RECOVERY"
-            trend_score = 1
-        elif price < ema20:
-            trend = "WEAK"
-            trend_score = -1
-        else:
-            trend = "SIDEWAY"
-            trend_score = 0
-
-        return {
-            "price": round(price, 2),
-            "ema20": round(ema20, 2),
-            "ema50": round(ema50, 2),
-            "trend": trend,
-            "trend_score": trend_score
-        }
-
-    except Exception as e:
-        print("GOLD TREND ERROR:", str(e))
-
-        return {
-            "price": 0,
-            "ema20": 0,
-            "ema50": 0,
-            "trend": "ERROR",
-            "trend_score": 0
-        }
+    return {
+        "price": 0,
+        "ema20": 0,
+        "ema50": 0,
+        "trend": "TEMP_DISABLED",
+        "trend_score": -2
+    }
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
