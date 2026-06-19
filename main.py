@@ -675,21 +675,26 @@ def get_dxy_change():
 def get_us10y_change():
     try:
         us10y = yf.Ticker("^TNX")
+        hist = us10y.history(period="10d")
 
-        hist = us10y.history(period="5d")
-
-        print(hist)
-
-        if len(hist) < 2:
+        if hist is None or hist.empty or len(hist) < 2:
             return 0
 
-        prev = hist["Close"].iloc[-2]
-        curr = hist["Close"].iloc[-1]
+        closes = hist["Close"].dropna()
 
-        print("TNX PREV:", prev)
-        print("TNX CURR:", curr)
+        if len(closes) < 2:
+            return 0
 
-        return round((curr - prev) / prev * 100, 2)
+        prev = float(closes.iloc[-2])
+        curr = float(closes.iloc[-1])
+
+        change = ((curr - prev) / prev) * 100
+
+        print("US10Y PREV:", prev)
+        print("US10Y CURR:", curr)
+        print("US10Y CHANGE:", change)
+
+        return round(change, 2)
 
     except Exception as e:
         print("US10Y ERROR:", e)
