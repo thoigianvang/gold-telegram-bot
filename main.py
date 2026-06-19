@@ -1300,7 +1300,7 @@ def main():
             session_report(events, state, "PHIÊN Á")
 
         if now.hour == 16 and now.minute < 15:
-            session_report(events, state, "TEST PHIÊN ÂU")
+            session_report(events, state, "PHIÊN ÂU")
 
         if now.hour == 21 and now.minute < 15:
             session_report(events, state, "PHIÊN MỸ")
