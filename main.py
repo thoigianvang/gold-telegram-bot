@@ -283,7 +283,7 @@ def target_events(events):
 
 def get_gold_news(limit=8):
     items = []
-    seen_titles = set()
+    seen_keys = set()
 
     for query in NEWS_QUERIES:
         rss_url = (
@@ -303,10 +303,37 @@ def get_gold_news(limit=8):
                 pub_date = clean_value(item.find("pubDate").text if item.find("pubDate") else "")
                 link = clean_value(item.find("link").text if item.find("link") else "")
 
-                if title == "-" or title in seen_titles:
+                if title == "-":
                     continue
 
-                seen_titles.add(title)
+                # Tạo key để lọc tin trùng / gần trùng
+                key = title.lower()
+
+                remove_words = [
+                    "gold", "xauusd", "xau/usd",
+                    "fed", "federal reserve",
+                    "dollar", "usd",
+                    "treasury", "yields", "yield",
+                    "price", "prices",
+                    "market", "markets",
+                    "today", "forecast",
+                    "analysis", "outlook",
+                ]
+
+                for w in remove_words:
+                    key = key.replace(w, "")
+
+                # Bỏ tên nguồn phía sau dấu "-"
+                if " - " in key:
+                    key = key.rsplit(" - ", 1)[0]
+
+                key = " ".join(key.split())
+                key = key[:90]
+
+                if key in seen_keys:
+                    continue
+
+                seen_keys.add(key)
 
                 score, reasons = score_news_title(title)
 
