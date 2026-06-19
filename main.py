@@ -729,8 +729,21 @@ def format_actual_alert(event, market_v6):
     if actual_num is not None and forecast_num is not None:
         deviation = actual_num - forecast_num
         deviation_text = f"{deviation:+.2f}"
+    impact_strength = "NORMAL"
 
-        title_l = title.lower()
+    if forecast_num != 0:
+
+        ratio = abs(deviation) / abs(forecast_num)
+
+        if ratio >= 0.30:
+            impact_strength = "🔥 RẤT MẠNH"
+
+        elif ratio >= 0.15:
+            impact_strength = "⚡ MẠNH"
+
+        else:
+            impact_strength = "🟡 TRUNG BÌNH"
+            title_l = title.lower()
 
         bad_when_higher = [
             "cpi", "ppi", "inflation", "core",
@@ -792,12 +805,13 @@ def format_actual_alert(event, market_v6):
 
     confidence = min(95, 50 + abs(final_score) * 5)
 
-    msg = "🚨 HIGH IMPACT ACTUAL RELEASED\n\n"
+    msg = "🚨 TIN USD VỪA RA\n\n"
     msg += f"Event: {title}\n"
     msg += f"Actual: {actual}\n"
     msg += f"Forecast: {forecast}\n"
     msg += f"Previous: {previous}\n"
-    msg += f"Deviation: {deviation_text}\n\n"
+    msg += f"Deviation: {deviation_text}\n"
+    msg += f"Độ mạnh tin: {impact_strength}\n\n"
 
     msg += "📌 Event Impact\n"
     msg += f"Event Bias: {event_bias}\n"
@@ -846,14 +860,34 @@ def session_alert(state, total_score):
         return
 
     if total_score >= 3:
-        bias = "BUY"
-        icon = "🟢"
+
+    action = """
+    🟢 BUY WATCH
+
+    BUY STOP trên đỉnh nến tin
+    SL dưới đáy nến tin
+
+    Không BUY market ngay.
+    """
+
     elif total_score <= -3:
-        bias = "SELL"
-        icon = "🔴"
+
+        action = """
+    🔴 SELL WATCH
+
+    SELL STOP dưới đáy nến tin
+    SL trên đỉnh nến tin
+
+    Không SELL market ngay.
+    """
+
     else:
-        bias = "WAIT"
-        icon = "⚪"
+
+        action = """
+    ⚪ WAIT
+
+    Chờ phản ứng giá rõ hơn.
+    """
 
     msg = "🌍 SESSION OPEN ALERT\n\n"
     msg += f"Time: {now.strftime('%m-%d %H:%M JST')}\n"
@@ -1110,6 +1144,8 @@ def check_events(events, state):
                 sent_any = True
 
         if e["actual"] != "-" and -30 <= minutes <= 30:
+            print("ACTUAL DETECTED")
+            print(e)
             key = f"actual_{key_base}_{e['actual']}"
 
             if not already_sent(state, key):
