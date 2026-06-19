@@ -1291,11 +1291,19 @@ def main():
 
     if MODE == "auto":
         print("AUTO MODE START")
-        session_report(events, state, "TEST PHIÊN")
+        
 
         daily_gold_bias(events, state, force=False)
 
         check_events(events, state)
+        if now.hour == 9 and now.minute < 15:
+            session_report(events, state, "PHIÊN Á")
+
+        if now.hour == 16 and now.minute < 15:
+            session_report(events, state, "PHIÊN ÂU")
+
+        if now.hour == 21 and now.minute < 15:
+            session_report(events, state, "PHIÊN MỸ")
 
         if now.hour == 7 and now.minute < 15:
             daily_report(events, state)
