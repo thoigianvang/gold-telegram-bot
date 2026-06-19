@@ -943,10 +943,11 @@ def daily_gold_bias(events, state, force=False):
 
     total_score = economic_score + news_score + dollar_score + yield_score
     total_score = clamp_score(total_score, -10, 10)
+
     if now.hour in [9, 16, 21] and now.minute < 15:
         session_alert(state, total_score)
-    buy_prob, sell_prob = calculate_probability(total_score)
 
+    buy_prob, sell_prob = calculate_probability(total_score)
     confidence = max(buy_prob, sell_prob)
 
     if fomc_risk:
@@ -962,22 +963,31 @@ def daily_gold_bias(events, state, force=False):
         primary_bias = "BUY GOLD BIAS"
         bias_icon = "🟢"
         action = "🟢 ACTION: STRONG BUY ZONE"
+        scenario = "Kịch bản ưu tiên: BUY bias mạnh. Chờ giá hồi về hỗ trợ rồi tìm BUY theo nến xác nhận.\n"
+
     elif total_score >= 2:
         primary_bias = "BUY GOLD nhẹ"
         bias_icon = "🟢"
         action = "🟢 ACTION: BUY WATCH"
+        scenario = "Kịch bản ưu tiên: BUY bias nhẹ. Chỉ BUY khi giá hồi về hỗ trợ và có nến xác nhận.\n"
+
     elif total_score <= -5:
         primary_bias = "SELL GOLD BIAS"
         bias_icon = "🔴"
         action = "🔴 ACTION: STRONG SELL ZONE"
+        scenario = "Kịch bản ưu tiên: SELL bias mạnh. Chờ giá hồi lên kháng cự rồi tìm SELL theo nến xác nhận.\n"
+
     elif total_score <= -2:
         primary_bias = "SELL GOLD nhẹ"
         bias_icon = "🔴"
         action = "🔴 ACTION: SELL WATCH"
+        scenario = "Kịch bản ưu tiên: SELL bias nhẹ. Chỉ SELL khi giá hồi lên kháng cự và có nến xác nhận.\n"
+
     else:
         primary_bias = "WAIT / chưa rõ"
         bias_icon = "⚪"
         action = "⚪ ACTION: WAIT"
+        scenario = "Kịch bản ưu tiên: WAIT. Điểm chưa đủ mạnh, không ép lệnh.\n"
 
     msg = "📊 GOLD DAILY INTELLIGENCE V4\n\n"
     msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n"
@@ -1056,12 +1066,7 @@ def daily_gold_bias(events, state, force=False):
         msg += "- Trước / trong FOMC: ưu tiên WAIT, không ép lệnh.\n"
         msg += "- Chỉ giao dịch sau khi giá phản ứng rõ với tin.\n\n"
 
-    if total_score >= 3:
-        msg += "Kịch bản ưu tiên: BUY bias. Chờ giá hồi về hỗ trợ rồi tìm BUY theo nến xác nhận.\n"
-    elif total_score <= -3:
-        msg += "Kịch bản ưu tiên: SELL bias. Chờ giá hồi lên kháng cự rồi tìm SELL theo nến xác nhận.\n"
-    else:
-        msg += "Kịch bản ưu tiên: WAIT. Điểm chưa đủ mạnh, không ép lệnh.\n"
+    msg += scenario
 
     msg += "\n══════════════════════\n"
     msg += "⚠️ Đây là mô hình bias, không phải lệnh vào trực tiếp.\n"
@@ -1081,7 +1086,6 @@ def daily_gold_bias(events, state, force=False):
 
     state[last_score_key] = total_score
     mark_sent(state, key)
-
 def check_events(events, state):
 
     now = datetime.now(JST)
