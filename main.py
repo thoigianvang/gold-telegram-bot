@@ -889,7 +889,7 @@ def session_alert(state, total_score):
 
     send_telegram(msg)
     mark_sent(state, session_key)
-def get_gold_trend_signal():
+def get_gold_trend__signal():
     try:
         import yfinance as yf
 
@@ -1035,6 +1035,7 @@ def session_report(events, state, session_name, total_score=None):
 
     # Gold Trend
     gold_trend = get_gold_trend_signal()
+    print("GOLD TREND RESULT:", gold_trend)
     trend_score = clamp_score(gold_trend.get("trend_score", 0))
 
     if total_score is None:
@@ -1510,7 +1511,7 @@ def main():
         
 
         daily_gold_bias(events, state, force=False)
-        session_report(events, state, "TEST 999")
+        
         check_events(events, state)
         if now.hour == 9 and now.minute < 15:
             session_report(events, state, "PHIÊN Á")
