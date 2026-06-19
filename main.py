@@ -1136,7 +1136,8 @@ def session_report(events, state, session_name, total_score=None):
     print(gold_trend)
     print("GOLD TREND RESULT:", gold_trend)
     trend_score = clamp_score(gold_trend.get("trend_score", 0))
-
+    print("TREND SCORE RAW:", gold_trend.get("trend_score"))
+    print("TREND SCORE AFTER:", trend_score)
     if total_score is None:
         total_score = clamp_score(
             news_score + dollar_score + yield_score + trend_score,
