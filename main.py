@@ -1241,7 +1241,7 @@ def daily_gold_bias(events, state, force=False):
         conflict_warning = "⚠️ DXY giảm mạnh nhưng US10Y tăng mạnh. Tín hiệu đang xung đột, chỉ nên WATCH, không ép lệnh.\n\n"
 
     if now.hour == 15 and now.minute < 15:
-    session_report(events, state, "TEST")
+        session_report(events, state, "TEST")
 
     buy_prob, sell_prob = calculate_probability(total_score)
     confidence = max(buy_prob, sell_prob)
