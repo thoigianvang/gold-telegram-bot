@@ -1270,13 +1270,13 @@ def main():
 
     save_state(state)
     try:
-    main()
+        main()
 
-except Exception as e:
-    print("ERROR:", str(e))
+    except Exception as e:
+        print("ERROR:", str(e))
 
-    try:
-        send_telegram(f"❌ GOLD BOT ERROR\n\n{e}")
+        try:
+            send_telegram(f"❌ GOLD BOT ERROR\n\n{e}")
 
-    except Exception as send_error:
-        print("FAILED TO SEND ERROR:", str(send_error))
+        except Exception as send_error:
+            print("FAILED TO SEND ERROR:", str(send_error))
