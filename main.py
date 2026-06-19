@@ -695,52 +695,52 @@ def get_us10y_change():
         print("US10Y ERROR:", e)
         return 0
 def market_bias_engine(news_score=0):
-
     dxy_change = get_dxy_change()
-    print("DXY:", dxy_change)
     us10y_change = get_us10y_change()
+
+    print("DXY:", dxy_change)
+    print("US10Y:", us10y_change)
 
     dollar_score = 0
     yield_score = 0
 
-    if dxy_change >= 0.5:
+    # DXY tăng = USD mạnh = thường xấu cho vàng
+    if dxy_change >= 0.30:
         dollar_score = -5
-    elif dxy_change >= 0.3:
-        dollar_score = -4
     elif dxy_change >= 0.15:
+        dollar_score = -4
+    elif dxy_change >= 0.05:
         dollar_score = -2
-    elif dxy_change <= -0.5:
+    elif dxy_change <= -0.30:
         dollar_score = 5
-    elif dxy_change <= -0.3:
-        dollar_score = 4
     elif dxy_change <= -0.15:
+        dollar_score = 4
+    elif dxy_change <= -0.05:
         dollar_score = 2
 
-    if us10y_change >= 0.5:
+    # US10Y tăng = lợi suất tăng = thường xấu cho vàng
+    if us10y_change >= 0.30:
         yield_score = -5
-    elif us10y_change >= 0.3:
-        yield_score = -4
     elif us10y_change >= 0.15:
+        yield_score = -4
+    elif us10y_change >= 0.05:
         yield_score = -2
-    elif us10y_change <= -0.5:
+    elif us10y_change <= -0.30:
         yield_score = 5
-    elif us10y_change <= -0.3:
-        yield_score = 4
     elif us10y_change <= -0.15:
+        yield_score = 4
+    elif us10y_change <= -0.05:
         yield_score = 2
-    else:
-        yield_score = 0 
 
     total_score = news_score + dollar_score + yield_score
+
     return {
-    "dxy_change": dxy_change,
-    "us10y_change": us10y_change,
-    "dollar_score": dollar_score,
-    "yield_score": yield_score,
-    "total": total_score
+        "dxy_change": dxy_change,
+        "us10y_change": us10y_change,
+        "dollar_score": dollar_score,
+        "yield_score": yield_score,
+        "total": total_score
     }
-    msg += f"Trend Score: {trend_score}\n"
-    msg += f"Gold Trend: {gold_trend.get('trend')}\n"
 def format_actual_alert(event, market_v6):
 
     title = event.get("title", "")
