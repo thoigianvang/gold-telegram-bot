@@ -948,7 +948,6 @@ def get_gold_trend_signal():
             "trend": "ERROR",
             "trend_score": 0
         }
-        }
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
