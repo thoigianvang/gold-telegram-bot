@@ -859,7 +859,7 @@ def session_alert(state, total_score):
         print("Session alert already sent.")
         return
 
-        if total_score >= 3:
+    if total_score >= 3:
         action = (
             "🟢 BUY WATCH\n\n"
             "BUY STOP trên đỉnh nến tin\n"
