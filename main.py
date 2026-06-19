@@ -323,20 +323,7 @@ def get_gold_news(limit=8):
                     return items
 
     except Exception as e:
-        print("GOLD TREND ERROR:", str(e))
-
-        send_telegram(
-            f"❌ GOLD TREND ERROR\n\n{str(e)}"
-        )
-
-        return {
-            "price": 0,
-            "ema20": 0,
-            "ema50": 0,
-            "trend": "ERROR",
-            "trend_score": 0
-        }
-            
+        print("GOLD NEWS ERROR:", str(e))
 
     return items
 
@@ -913,7 +900,7 @@ def get_gold_trend_signal():
                 "price": 0,
                 "ema20": 0,
                 "ema50": 0,
-                "trend": "UNKNOWN",
+                "trend": "NO_DATA",
                 "trend_score": 0
             }
 
@@ -952,13 +939,15 @@ def get_gold_trend_signal():
         }
 
     except Exception as e:
-        print("GOLD TREND ERROR:", e)
+        print("GOLD TREND ERROR:", str(e))
+
         return {
             "price": 0,
             "ema20": 0,
             "ema50": 0,
             "trend": "ERROR",
             "trend_score": 0
+        }
         }
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
