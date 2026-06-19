@@ -948,15 +948,21 @@ def session_report(events, state, session_name, total_score=None):
 
     session_events = []
     remaining_today_events = []
+    recent_events = []
+
     print("===== EVENTS =====")
 
     for e in events:
         print(e)
-    for e in events:
+
         if not e.get("jst"):
             continue
 
         event_time = e["jst"]
+
+        hours_passed = (now - event_time).total_seconds() / 3600
+        if 0 <= hours_passed <= 36:
+            recent_events.append(e)
 
         if event_time.date() != now.date():
             continue
@@ -971,10 +977,6 @@ def session_report(events, state, session_name, total_score=None):
 
     msg = f"🌍 SESSION REPORT V2 - {session_name}\n\n"
     msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n\n"
-
-    msg += f"DEBUG EVENTS FOUND: {len(events)}\n"
-    msg += f"SESSION EVENTS: {len(session_events)}\n"
-    msg += f"REMAIN EVENTS: {len(remaining_today_events)}\n\n"
 
     msg += "📊 MARKET\n"
     msg += f"DXY: {dxy_change}%\n"
@@ -1006,6 +1008,16 @@ def session_report(events, state, session_name, total_score=None):
         for e in remaining_today_events[:5]:
             msg += f"- {e['title']} | {e['jst'].strftime('%H:%M JST')}\n"
             msg += f"  Forecast: {e['forecast']} | Previous: {e['previous']} | Actual: {e['actual']}\n"
+
+    msg += "\n🔥 TIN 36 GIỜ GẦN NHẤT / DƯ ÂM\n"
+    if not recent_events:
+        msg += "Không có tin lớn trong 36 giờ qua.\n\n"
+    else:
+        for e in recent_events[:5]:
+            passed = int((now - e["jst"]).total_seconds() / 3600)
+            msg += f"- {e['title']} | {e['jst'].strftime('%m-%d %H:%M JST')} | {passed}h trước\n"
+
+        msg += "\n👉 Các tin trên vẫn có thể tạo dư âm cho USD, US10Y và vàng.\n\n"
 
     msg += "\n📌 KỊCH BẢN PHIÊN\n"
     msg += action
