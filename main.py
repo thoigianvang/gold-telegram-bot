@@ -943,6 +943,13 @@ def daily_gold_bias(events, state, force=False):
 
     total_score = economic_score + news_score + dollar_score + yield_score
     total_score = clamp_score(total_score, -10, 10)
+    conflict_warning = ""
+
+    if dollar_score <= -3 and yield_score >= 3:
+        conflict_warning = "⚠️ DXY tăng mạnh nhưng US10Y giảm mạnh. Tín hiệu đang xung đột, chỉ nên WATCH, không ép lệnh.\n\n"
+
+    elif dollar_score >= 3 and yield_score <= -3:
+        conflict_warning = "⚠️ DXY giảm mạnh nhưng US10Y tăng mạnh. Tín hiệu đang xung đột, chỉ nên WATCH, không ép lệnh.\n\n"
 
     if now.hour in [9, 16, 21] and now.minute < 15:
         session_alert(state, total_score)
@@ -1056,7 +1063,7 @@ def daily_gold_bias(events, state, force=False):
     msg += f"🟢 BUY Probability: {buy_prob}%\n"
     msg += f"🔴 SELL Probability: {sell_prob}%\n"
     msg += f"{action}\n\n"
-
+    msg += conflict_warning
     msg += "══════════════════════\n\n"
     msg += "4️⃣ TODAY BIAS\n\n"
     msg += f"{bias_icon} Primary Bias: {primary_bias}\n\n"
