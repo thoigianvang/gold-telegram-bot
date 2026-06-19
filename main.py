@@ -1486,15 +1486,15 @@ def check_bias_reversal(state, total_score):
 def manual_test(events, state):
      session_report(events, state, "TEST TREND")
 
-    msg = "✅ BOT TEST OK\n\n"
+     msg = "✅ BOT TEST OK\n\n"
 
-    msg += f"MODE: {MODE}\n"
+     msg += f"MODE: {MODE}\n"
 
-    msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
+     msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
 
-    msg += f"Events found: {len(events)}\n\n"
+     msg += f"Events found: {len(events)}\n\n"
 
-    msg += "Telegram + GitHub Actions đang hoạt động."
+     msg += "Telegram + GitHub Actions đang hoạt động."
 
     send_telegram(msg)
 
