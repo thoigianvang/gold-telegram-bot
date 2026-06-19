@@ -1291,6 +1291,7 @@ def main():
 
     if MODE == "auto":
         print("AUTO MODE START")
+        session_report(events, state, "TEST PHIÊN")
 
         daily_gold_bias(events, state, force=False)
 
