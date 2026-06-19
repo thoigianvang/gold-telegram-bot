@@ -1211,6 +1211,7 @@ def manual_test(events, state):
     daily_gold_bias(events, state, force=True)
 
 def main():
+    send_telegram("✅ MAIN START")
     state = load_state()
     events = get_events()
 
@@ -1273,6 +1274,7 @@ def main():
         send_telegram(f"❌ Unknown MODE: {MODE}")
 
     save_state(state)
+    print("FILE LOADED OK")
     try:
         main()
 
