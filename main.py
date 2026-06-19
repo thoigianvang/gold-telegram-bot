@@ -322,8 +322,21 @@ def get_gold_news(limit=8):
                 if len(items) >= limit:
                     return items
 
-        except Exception as e:
-            print("NEWS FETCH ERROR:", query, str(e))
+     except Exception as e:
+         print("GOLD TREND ERROR:", str(e))
+
+         send_telegram(
+             f"❌ GOLD TREND ERROR\n\n{str(e)}"
+         )
+
+         return {
+             "price": 0,
+             "ema20": 0,
+             "ema50": 0,
+             "trend": "ERROR",
+             "trend_score": 0
+         }
+            
 
     return items
 
