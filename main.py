@@ -322,11 +322,11 @@ def get_gold_news(limit=8):
                 if len(items) >= limit:
                     return items
 
-    except Exception as e:
-        print("GOLD NEWS ERROR:", str(e))
+        except Exception as e:
+            print("GOLD NEWS ERROR:", str(e))
+            continue
 
     return items
-
 def daily_report(events, state, force=False):
     today = datetime.now(JST).strftime("%Y-%m-%d")
     daily_key = f"daily_{today}"
