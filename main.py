@@ -859,35 +859,27 @@ def session_alert(state, total_score):
         print("Session alert already sent.")
         return
 
-    if total_score >= 3:
-
-    action = """
-    🟢 BUY WATCH
-
-    BUY STOP trên đỉnh nến tin
-    SL dưới đáy nến tin
-
-    Không BUY market ngay.
-    """
+        if total_score >= 3:
+        action = (
+            "🟢 BUY WATCH\n\n"
+            "BUY STOP trên đỉnh nến tin\n"
+            "SL dưới đáy nến tin\n\n"
+            "Không BUY market ngay."
+        )
 
     elif total_score <= -3:
-
-        action = """
-    🔴 SELL WATCH
-
-    SELL STOP dưới đáy nến tin
-    SL trên đỉnh nến tin
-
-    Không SELL market ngay.
-    """
+        action = (
+            "🔴 SELL WATCH\n\n"
+            "SELL STOP dưới đáy nến tin\n"
+            "SL trên đỉnh nến tin\n\n"
+            "Không SELL market ngay."
+        )
 
     else:
-
-        action = """
-    ⚪ WAIT
-
-    Chờ phản ứng giá rõ hơn.
-    """
+        action = (
+            "⚪ WAIT\n\n"
+            "Chờ phản ứng giá rõ hơn."
+        )
 
     msg = "🌍 SESSION OPEN ALERT\n\n"
     msg += f"Time: {now.strftime('%m-%d %H:%M JST')}\n"
