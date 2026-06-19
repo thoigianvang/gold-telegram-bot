@@ -1101,31 +1101,34 @@ def get_gold_trend_signal():
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
-    key = f"session_report_{session_name}_{today}_{now.hour}"
+
+    # Mỗi phiên chỉ gửi 1 lần / ngày
+    key = f"session_report_{session_name}_{today}"
 
     if already_sent(state, key):
         print(f"{session_name} session already sent.")
         return
 
-    # Session end time theo giờ Nhật
+    # Giờ kết thúc phiên theo JST
     if session_name == "PHIÊN Á":
         session_end_hour = 16
     elif session_name == "PHIÊN ÂU":
         session_end_hour = 21
     elif session_name == "PHIÊN MỸ":
-        session_end_hour = 24
+        session_end_hour = 23
     else:
         session_end_hour = now.hour + 6
 
     # News + Market
     news = get_gold_news(limit=6)
+
     news_score = sum(item.get("score", 0) for item in news)
-    news_score = clamp_score(news_score)
+    news_score = clamp_score(news_score, -4, 4)
 
     market_v6 = market_bias_engine(news_score)
 
-    dollar_score = clamp_score(market_v6.get("dollar_score", 0))
-    yield_score = clamp_score(market_v6.get("yield_score", 0))
+    dollar_score = clamp_score(market_v6.get("dollar_score", 0), -4, 4)
+    yield_score = clamp_score(market_v6.get("yield_score", 0), -4, 4)
 
     dxy_change = market_v6.get("dxy_change", 0)
     us10y_change = market_v6.get("us10y_change", 0)
@@ -1134,10 +1137,9 @@ def session_report(events, state, session_name, total_score=None):
     gold_trend = get_gold_trend_signal()
     print("========== GOLD TREND ==========")
     print(gold_trend)
-    print("GOLD TREND RESULT:", gold_trend)
-    trend_score = clamp_score(gold_trend.get("trend_score", 0))
-    print("TREND SCORE RAW:", gold_trend.get("trend_score"))
-    print("TREND SCORE AFTER:", trend_score)
+
+    trend_score = clamp_score(gold_trend.get("trend_score", 0), -4, 4)
+
     if total_score is None:
         total_score = clamp_score(
             news_score + dollar_score + yield_score + trend_score,
@@ -1146,6 +1148,7 @@ def session_report(events, state, session_name, total_score=None):
         )
 
     buy_prob, sell_prob = calculate_probability(total_score)
+
     if abs(total_score) >= 8:
         risk_level = "EXTREME"
     elif abs(total_score) >= 5:
@@ -1237,7 +1240,6 @@ def session_report(events, state, session_name, total_score=None):
     msg += f"EMA200: {gold_trend.get('ema200')}\n"
     msg += f"Gold Trend: {gold_trend.get('trend')}\n"
     msg += f"Trend Score: {trend_score}\n"
-    msg += f"Gold Source: {gold_trend.get('symbol')}\n"
     msg += f"Total Score: {total_score}\n\n"
 
     msg += "🎯 BIAS\n"
@@ -1659,7 +1661,7 @@ def main():
             session_report(events, state, "PHIÊN ÂU")
 
         # Báo cáo phiên Mỹ
-        if now.hour == 21 and now.minute < 45:
+        if now.hour == 21:
             session_report(events, state, "PHIÊN MỸ")
 
         # Cập nhật tin vàng trong ngày
