@@ -890,13 +890,117 @@ def session_alert(state, total_score):
     send_telegram(msg)
     mark_sent(state, session_key)
 def get_gold_trend_signal():
-    return {
-        "price": 0,
-        "ema20": 0,
-        "ema50": 0,
-        "trend": "TEMP_DISABLED",
-        "trend_score": -2
-    }
+    try:
+        import yfinance as yf
+
+        symbols = ["GC=F", "XAUUSD=X"]
+        df = None
+        used_symbol = None
+
+        for symbol in symbols:
+            try:
+                temp = yf.download(
+                    symbol,
+                    period="30d",
+                    interval="1h",
+                    progress=False,
+                    auto_adjust=False
+                )
+
+                if temp is not None and not temp.empty and len(temp) >= 200:
+                    df = temp
+                    used_symbol = symbol
+                    break
+
+            except Exception as inner_error:
+                print(f"GOLD DATA ERROR {symbol}:", str(inner_error))
+
+        if df is None or df.empty:
+            return {
+                "symbol": "NONE",
+                "price": 0,
+                "ema20": 0,
+                "ema50": 0,
+                "ema200": 0,
+                "trend": "NO_DATA",
+                "trend_score": -2
+            }
+
+        close = df["Close"]
+
+        if hasattr(close, "columns"):
+            close = close.iloc[:, 0]
+
+        close = close.dropna()
+
+        if len(close) < 200:
+            return {
+                "symbol": used_symbol,
+                "price": 0,
+                "ema20": 0,
+                "ema50": 0,
+                "ema200": 0,
+                "trend": "NOT_ENOUGH_DATA",
+                "trend_score": -2
+            }
+
+        price = float(close.iloc[-1])
+        ema20 = float(close.ewm(span=20, adjust=False).mean().iloc[-1])
+        ema50 = float(close.ewm(span=50, adjust=False).mean().iloc[-1])
+        ema200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1])
+
+        if price > ema20 > ema50 > ema200:
+            trend = "STRONG_UPTREND"
+            trend_score = 4
+
+        elif price > ema20 and ema20 > ema50:
+            trend = "UPTREND"
+            trend_score = 2
+
+        elif price < ema20 < ema50 < ema200:
+            trend = "STRONG_DOWNTREND"
+            trend_score = -4
+
+        elif price < ema20 and ema20 < ema50:
+            trend = "DOWNTREND"
+            trend_score = -2
+
+        elif price > ema20 and price < ema50:
+            trend = "RECOVERY_BUT_WEAK"
+            trend_score = 1
+
+        elif price < ema20 and price > ema50:
+            trend = "PULLBACK_BUT_STILL_OK"
+            trend_score = -1
+
+        else:
+            trend = "SIDEWAY"
+            trend_score = 0
+
+        return {
+            "symbol": used_symbol,
+            "price": round(price, 2),
+            "ema20": round(ema20, 2),
+            "ema50": round(ema50, 2),
+            "ema200": round(ema200, 2),
+            "trend": trend,
+            "trend_score": trend_score
+        }
+
+    except Exception as e:
+        print("GOLD TREND ERROR:", str(e))
+
+        return {
+            "symbol": "ERROR",
+            "price": 0,
+            "ema20": 0,
+            "ema50": 0,
+            "ema200": 0,
+            "trend": "ERROR",
+            "trend_score": -2
+        }
+
+
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
@@ -906,6 +1010,7 @@ def session_report(events, state, session_name, total_score=None):
         print(f"{session_name} session already sent.")
         return
 
+    # Session end time theo giờ Nhật
     if session_name == "PHIÊN Á":
         session_end_hour = 16
     elif session_name == "PHIÊN ÂU":
@@ -915,8 +1020,10 @@ def session_report(events, state, session_name, total_score=None):
     else:
         session_end_hour = now.hour + 6
 
+    # News + Market
     news = get_gold_news(limit=6)
     news_score = sum(item.get("score", 0) for item in news)
+    news_score = clamp_score(news_score)
 
     market_v6 = market_bias_engine(news_score)
 
@@ -926,8 +1033,9 @@ def session_report(events, state, session_name, total_score=None):
     dxy_change = market_v6.get("dxy_change", 0)
     us10y_change = market_v6.get("us10y_change", 0)
 
+    # Gold Trend
     gold_trend = get_gold_trend_signal()
-    trend_score = gold_trend.get("trend_score", 0)
+    trend_score = clamp_score(gold_trend.get("trend_score", 0))
 
     if total_score is None:
         total_score = clamp_score(
@@ -938,19 +1046,30 @@ def session_report(events, state, session_name, total_score=None):
 
     buy_prob, sell_prob = calculate_probability(total_score)
 
-    conflict_warning = ""
+    # Warning logic
+    warnings = []
 
     if dollar_score <= -3 and yield_score >= 3:
-        conflict_warning = "⚠️ DXY tăng nhưng US10Y giảm. Tín hiệu xung đột, chỉ WATCH.\n\n"
+        warnings.append("⚠️ DXY tăng nhưng US10Y giảm. Tín hiệu xung đột, chỉ WATCH.")
     elif dollar_score >= 3 and yield_score <= -3:
-        conflict_warning = "⚠️ DXY giảm nhưng US10Y tăng. Tín hiệu xung đột, chỉ WATCH.\n\n"
+        warnings.append("⚠️ DXY giảm nhưng US10Y tăng. Tín hiệu xung đột, chỉ WATCH.")
 
+    if gold_trend.get("trend") in ["ERROR", "NO_DATA", "NOT_ENOUGH_DATA", "TEMP_DISABLED"]:
+        warnings.append("⚠️ Gold Trend chưa ổn định. Không dùng bias này để vào lệnh trực tiếp.")
+
+    if dxy_change and dxy_change > 0.5 and total_score > 0:
+        warnings.append("⚠️ DXY tăng mạnh nhưng bot vẫn BUY. Chỉ WATCH, không BUY đuổi.")
+
+    if us10y_change and us10y_change > 0.5 and total_score > 0:
+        warnings.append("⚠️ US10Y tăng mạnh nhưng bot vẫn BUY. Rủi ro SELL vàng cao.")
+
+    # Bias label
     if total_score >= 5:
         bias = "🟢 STRONG BUY GOLD"
-        action = "BUY bias mạnh. Chờ giá hồi về hỗ trợ rồi tìm BUY theo nến xác nhận."
+        action = "BUY bias mạnh. Chỉ BUY khi giá hồi về hỗ trợ và có nến xác nhận rõ."
     elif total_score >= 2:
         bias = "🟢 BUY GOLD nhẹ"
-        action = "BUY bias nhẹ. Chỉ BUY khi giá hồi về hỗ trợ và có nến xác nhận."
+        action = "BUY bias nhẹ. Không BUY đuổi. Chỉ BUY khi giá hồi về hỗ trợ."
     elif total_score <= -5:
         bias = "🔴 STRONG SELL GOLD"
         action = "SELL bias mạnh. Chờ giá hồi lên kháng cự rồi tìm SELL theo nến xác nhận."
@@ -961,6 +1080,7 @@ def session_report(events, state, session_name, total_score=None):
         bias = "⚪ WAIT"
         action = "Điểm chưa đủ mạnh. Không ép lệnh."
 
+    # Events
     session_events = []
     remaining_today_events = []
     recent_events = []
@@ -990,7 +1110,8 @@ def session_report(events, state, session_name, total_score=None):
         else:
             remaining_today_events.append(e)
 
-    msg = f"🌍 SESSION REPORT V2 - {session_name}\n\n"
+    # Message
+    msg = f"🌍 SESSION REPORT V3 - {session_name}\n\n"
     msg += f"🕒 Time: {now.strftime('%m-%d %H:%M JST')}\n\n"
 
     msg += "📊 MARKET\n"
@@ -999,11 +1120,14 @@ def session_report(events, state, session_name, total_score=None):
     msg += f"News Score: {news_score}\n"
     msg += f"Dollar Score: {dollar_score}\n"
     msg += f"Yield Score: {yield_score}\n"
+    msg += f"Gold Symbol: {gold_trend.get('symbol')}\n"
     msg += f"Gold Price: {gold_trend.get('price')}\n"
     msg += f"EMA20: {gold_trend.get('ema20')}\n"
     msg += f"EMA50: {gold_trend.get('ema50')}\n"
+    msg += f"EMA200: {gold_trend.get('ema200')}\n"
     msg += f"Gold Trend: {gold_trend.get('trend')}\n"
     msg += f"Trend Score: {trend_score}\n"
+    msg += f"Gold Source: {gold_trend.get('symbol')}\n"
     msg += f"Total Score: {total_score}\n\n"
 
     msg += "🎯 BIAS\n"
@@ -1011,7 +1135,11 @@ def session_report(events, state, session_name, total_score=None):
     msg += f"BUY Probability: {buy_prob}%\n"
     msg += f"SELL Probability: {sell_prob}%\n\n"
 
-    msg += conflict_warning
+    if warnings:
+        msg += "⚠️ RISK CHECK\n"
+        for w in warnings:
+            msg += f"{w}\n"
+        msg += "\n"
 
     msg += "🗓 TIN ẢNH HƯỞNG TRONG PHIÊN NÀY\n"
     if not session_events:
