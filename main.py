@@ -1236,9 +1236,8 @@ def main():
 
     elif MODE == "actual_test":
 
-        send_telegram("🔥 ACTUAL TEST MODE")
-
-        return
+        print("ACTUAL TEST MODE START")
+        send_telegram("✅ ACTUAL TEST MODE ĐÃ CHẠY")
 
         fake_event = {
             "title": "Core CPI m/m",
@@ -1250,8 +1249,9 @@ def main():
 
         market_v6 = market_bias_engine(-4)
         msg = format_actual_alert(fake_event, market_v6)
-        send_telegram(msg)
 
+        print("SENDING ACTUAL TEST ALERT")
+        send_telegram(msg)
     elif MODE == "daily":
 
         daily_report(events, state)
