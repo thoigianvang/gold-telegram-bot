@@ -1362,7 +1362,7 @@ def main():
         
 
         daily_gold_bias(events, state, force=False)
-        session_report(events, state, "TEST DEBUG")
+        session_report(events, state, "TEST 999")
         check_events(events, state)
         if now.hour == 9 and now.minute < 15:
             session_report(events, state, "PHIÊN Á")
