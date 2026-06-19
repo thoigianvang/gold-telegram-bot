@@ -1269,3 +1269,14 @@ def main():
         send_telegram(f"❌ Unknown MODE: {MODE}")
 
     save_state(state)
+    try:
+    main()
+
+except Exception as e:
+    print("ERROR:", str(e))
+
+    try:
+        send_telegram(f"❌ GOLD BOT ERROR\n\n{e}")
+
+    except Exception as send_error:
+        print("FAILED TO SEND ERROR:", str(send_error))
