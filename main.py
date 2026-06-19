@@ -889,6 +889,64 @@ def session_alert(state, total_score):
 
     send_telegram(msg)
     mark_sent(state, session_key)
+def get_gold_trend_signal():
+    try:
+        import yfinance as yf
+
+        df = yf.download("GC=F", period="5d", interval="1h", progress=False)
+
+        if df is None or df.empty or len(df) < 50:
+            return {
+                "price": 0,
+                "ema20": 0,
+                "ema50": 0,
+                "trend": "UNKNOWN",
+                "trend_score": 0
+            }
+
+        close = df["Close"]
+
+        ema20 = close.ewm(span=20).mean().iloc[-1]
+        ema50 = close.ewm(span=50).mean().iloc[-1]
+        price = close.iloc[-1]
+
+        price = float(price)
+        ema20 = float(ema20)
+        ema50 = float(ema50)
+
+        if price > ema20 > ema50:
+            trend = "UPTREND"
+            trend_score = 3
+        elif price < ema20 < ema50:
+            trend = "DOWNTREND"
+            trend_score = -3
+        elif price > ema20:
+            trend = "RECOVERY"
+            trend_score = 1
+        elif price < ema20:
+            trend = "WEAK"
+            trend_score = -1
+        else:
+            trend = "SIDEWAY"
+            trend_score = 0
+
+        return {
+            "price": round(price, 2),
+            "ema20": round(ema20, 2),
+            "ema50": round(ema50, 2),
+            "trend": trend,
+            "trend_score": trend_score
+        }
+
+    except Exception as e:
+        print("GOLD TREND ERROR:", e)
+        return {
+            "price": 0,
+            "ema20": 0,
+            "ema50": 0,
+            "trend": "ERROR",
+            "trend_score": 0
+        }
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
@@ -918,8 +976,15 @@ def session_report(events, state, session_name, total_score=None):
     dxy_change = market_v6.get("dxy_change", 0)
     us10y_change = market_v6.get("us10y_change", 0)
 
+    gold_trend = get_gold_trend_signal()
+    trend_score = gold_trend.get("trend_score", 0)
+
     if total_score is None:
-        total_score = clamp_score(news_score + dollar_score + yield_score, -10, 10)
+        total_score = clamp_score(
+            news_score + dollar_score + yield_score + trend_score,
+            -10,
+            10
+        )
 
     buy_prob, sell_prob = calculate_probability(total_score)
 
@@ -984,6 +1049,11 @@ def session_report(events, state, session_name, total_score=None):
     msg += f"News Score: {news_score}\n"
     msg += f"Dollar Score: {dollar_score}\n"
     msg += f"Yield Score: {yield_score}\n"
+    msg += f"Gold Price: {gold_trend.get('price')}\n"
+    msg += f"EMA20: {gold_trend.get('ema20')}\n"
+    msg += f"EMA50: {gold_trend.get('ema50')}\n"
+    msg += f"Gold Trend: {gold_trend.get('trend')}\n"
+    msg += f"Trend Score: {trend_score}\n"
     msg += f"Total Score: {total_score}\n\n"
 
     msg += "🎯 BIAS\n"
