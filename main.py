@@ -1651,15 +1651,15 @@ def main():
             daily_report(events, state)
 
         # Báo cáo phiên Á
-        if now.hour == 9 and now.minute < 15:
+        if now.hour == 9 and now.minute < 45:
             session_report(events, state, "PHIÊN Á")
 
         # Báo cáo phiên Âu
-        if now.hour == 16 and now.minute < 15:
+        if now.hour == 16 and now.minute < 45:
             session_report(events, state, "PHIÊN ÂU")
 
         # Báo cáo phiên Mỹ
-        if now.hour == 21 and now.minute < 15:
+        if now.hour == 21 and now.minute < 45:
             session_report(events, state, "PHIÊN MỸ")
 
         # Cập nhật tin vàng trong ngày
