@@ -1287,6 +1287,16 @@ def session_report(events, state, session_name, total_score=None):
     mark_sent(state, key)
 def daily_gold_bias(events, state, force=False):
     now = datetime.now(JST)
+
+    if now.weekday() in [5, 6]:
+        send_telegram(
+            "📅 CUỐI TUẦN\n\n"
+            "Forex và thị trường vàng quốc tế đã đóng cửa.\n"
+            "Không phát sinh lịch USD High Impact mới.\n"
+            "Bot tạm nghỉ đến thứ Hai."
+        )
+    return
+    now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
 
