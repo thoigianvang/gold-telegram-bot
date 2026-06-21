@@ -1684,13 +1684,20 @@ def main():
     if now.weekday() in [5, 6]:
         print("WEEKEND DETECTED")
 
-        if MODE == "auto":
+        today = now.strftime("%Y-%m-%d")
+        weekend_key = f"weekend_notice_{today}"
+
+        if not already_sent(state, weekend_key):
             send_telegram(
                 "📅 CUỐI TUẦN\n\n"
                 "Forex và thị trường vàng quốc tế đã đóng cửa.\n"
                 "Không phát sinh lịch USD High Impact mới.\n"
                 "Bot tạm nghỉ đến thứ Hai."
             )
+            mark_sent(state, weekend_key)
+            save_state(state)
+        else:
+            print("Weekend notice already sent.")
 
         return
 
