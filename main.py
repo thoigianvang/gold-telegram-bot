@@ -1320,13 +1320,22 @@ def daily_gold_bias(events, state, force=False):
     now = datetime.now(JST)
 
     if now.weekday() in [5, 6]:
-        send_telegram(
-            "📅 CUỐI TUẦN\n\n"
-            "Forex và thị trường vàng quốc tế đã đóng cửa.\n"
-            "Không phát sinh lịch USD High Impact mới.\n"
-            "Bot tạm nghỉ đến thứ Hai."
-        )
-    return
+
+        today = now.strftime("%Y-%m-%d")
+        weekend_key = f"weekend_notice_{today}"
+
+        if not already_sent(state, weekend_key):
+
+            send_telegram(
+                "📅 CUỐI TUẦN\n\n"
+                "Forex và thị trường vàng quốc tế đã đóng cửa.\n"
+                "Không phát sinh lịch USD High Impact mới.\n"
+                "Bot tạm nghỉ đến thứ Hai."
+            )
+
+            mark_sent(state, weekend_key)
+
+        return
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
     key = f"daily_gold_bias_{today}"
