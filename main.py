@@ -1639,6 +1639,18 @@ def main():
     state = load_state()
     events = get_events()
     now = datetime.now(JST)
+    if now.weekday() in [5, 6]:
+        print("WEEKEND DETECTED")
+
+        if MODE == "auto":
+            send_telegram(
+                "📅 CUỐI TUẦN\n\n"
+                "Forex và thị trường vàng quốc tế đã đóng cửa.\n"
+                "Không phát sinh lịch USD High Impact mới.\n"
+                "Bot tạm nghỉ đến thứ Hai."
+            )
+
+        return
 
     print(f"MODE={MODE}")
     print(f"EVENTS_FOUND={len(events)}")
