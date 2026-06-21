@@ -987,6 +987,37 @@ def session_alert(state, total_score):
 
     send_telegram(msg)
     mark_sent(state, session_key)
+def get_gold_spot_price():
+    """
+    Lấy giá vàng spot gần realtime.
+    Ưu tiên XAUUSD=X.
+    Nếu lỗi thì trả về None.
+    """
+    try:
+        import yfinance as yf
+
+        ticker = yf.Ticker("XAUUSD=X")
+        hist = ticker.history(period="2d", interval="1h")
+
+        if hist is None or hist.empty:
+            print("XAUUSD SPOT NO DATA")
+            return None
+
+        close = hist["Close"].dropna()
+
+        if len(close) == 0:
+            print("XAUUSD SPOT CLOSE EMPTY")
+            return None
+
+        price = float(close.iloc[-1])
+
+        print("XAUUSD SPOT PRICE:", price)
+
+        return round(price, 2)
+
+    except Exception as e:
+        print("XAUUSD SPOT ERROR:", str(e))
+        return None
 def get_gold_trend_signal():
     try:
         import yfinance as yf
@@ -1620,6 +1651,8 @@ def check_bias_reversal(state, total_score):
     state["last_bias_score"] = total_score       
 def manual_test(events, state):
      session_report(events, state, "TEST TREND")
+     spot_price = get_gold_spot_price()
+     send_telegram(f"🧪 XAUUSD SPOT TEST\n\nPrice: {spot_price}")
 
      msg = "✅ BOT TEST OK\n\n"
 
