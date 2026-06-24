@@ -428,7 +428,7 @@ def daily_report(events, state, force=False):
 
     selected = target_events(events)
 
-    msg = "🔥 HIGH IMPACT USD - TIN ẢNH HƯỞNG VÀNG\n\n"
+    msg = "📅 LỊCH USD HIGH IMPACT SẮP TỚI\n\n"
 
     if not selected:
         no_news_key = f"no_news_{today}"
@@ -450,6 +450,9 @@ def daily_report(events, state, force=False):
 
     for e in selected:
         bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
+        if e["actual"] == "-":
+        bias = "⏳ Chưa có Actual - chỉ là lịch sắp tới"
+        score = 0
         total += score
 
         msg += f"🇺🇸 {e['jst'].strftime('%m-%d %H:%M JST')}\n"
@@ -466,7 +469,7 @@ def daily_report(events, state, force=False):
     elif total <= -6:
         msg += "🔴 Kết luận: SELL GOLD BIAS mạnh"
     else:
-        msg += "⚪ Kết luận: WAIT / NO TRADE"
+        msg += "⚪ Kết luận: Chưa có Actual - chỉ theo dõi lịch, không vào lệnh theo tin."
 
     send_telegram(msg)
     mark_sent(state, daily_key)
