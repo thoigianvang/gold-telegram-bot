@@ -451,9 +451,9 @@ def daily_report(events, state, force=False):
     for e in selected:
         bias, score = gold_bias_from_event(e["title"], e["actual"], e["forecast"])
         if e["actual"] == "-":
-        bias = "⏳ Chưa có Actual - chỉ là lịch sắp tới"
-        score = 0
-        total += score
+            bias = "⏳ Chưa có Actual - chỉ là lịch sắp tới"
+            score = 0
+            total += score
 
         msg += f"🇺🇸 {e['jst'].strftime('%m-%d %H:%M JST')}\n"
         msg += f"{e['title']}\n"
