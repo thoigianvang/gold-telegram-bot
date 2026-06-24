@@ -1811,7 +1811,7 @@ def main():
            session_report(events, state, "PHIÊN MỸ")
 
         # Cập nhật tin vàng trong ngày
-       if now.hour in [9, 13, 17] and now.minute < 15:
+        if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
 
     elif MODE == "daily":
