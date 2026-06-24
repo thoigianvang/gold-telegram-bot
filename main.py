@@ -328,7 +328,77 @@ def get_events():
     events.sort(key=lambda x: x["jst"] or datetime.max.replace(tzinfo=JST))
     return events
 
+def get_today_all_events():
+    r = requests.get(CALENDAR_URL, timeout=20)
+    r.raise_for_status()
 
+    soup = BeautifulSoup(r.text, "xml")
+    today = datetime.now(JST).date()
+    events = []
+
+    for e in soup.find_all("event"):
+        country = clean_value(e.find("country").text if e.find("country") else "")
+        impact = clean_value(e.find("impact").text if e.find("impact") else "")
+        title = clean_value(e.find("title").text if e.find("title") else "")
+        date = clean_value(e.find("date").text if e.find("date") else "")
+        time = clean_value(e.find("time").text if e.find("time") else "")
+        forecast = clean_value(e.find("forecast").text if e.find("forecast") else "-")
+        previous = clean_value(e.find("previous").text if e.find("previous") else "-")
+        actual = clean_value(e.find("actual").text if e.find("actual") else "-")
+
+        jst_time = parse_event_time(date, time)
+
+        if not jst_time:
+            continue
+
+        if jst_time.date() != today:
+            continue
+
+        events.append({
+            "country": country,
+            "impact": impact,
+            "title": title,
+            "date": date,
+            "time": time,
+            "forecast": forecast,
+            "previous": previous,
+            "actual": actual,
+            "jst": jst_time,
+        })
+
+    events.sort(key=lambda x: x["jst"])
+    return events
+def daily_all_events_report(state, force=False):
+    now = datetime.now(JST)
+    today = now.strftime("%Y-%m-%d")
+    key = f"daily_all_events_{today}"
+
+    if not force and already_sent(state, key):
+        print("Daily all events report already sent.")
+        return
+
+    events = get_today_all_events()
+
+    msg = "📅 LỊCH KINH TẾ HÔM NAY\n\n"
+    msg += f"🕒 Update: {now.strftime('%m-%d %H:%M JST')}\n\n"
+
+    if not events:
+        msg += "Không có dữ liệu lịch kinh tế hôm nay."
+        send_telegram(msg)
+        mark_sent(state, key)
+        return
+
+    for e in events[:30]:
+        impact_icon = "🔴" if e["impact"] == "High" else "🟠" if e["impact"] == "Medium" else "🟡"
+
+        msg += f"{impact_icon} {e['jst'].strftime('%H:%M')} | {e['country']} | {e['impact']}\n"
+        msg += f"{e['title']}\n"
+        msg += f"Actual: {e['actual']} | Forecast: {e['forecast']} | Previous: {e['previous']}\n\n"
+
+    msg += "⚠️ Đây là lịch kinh tế tổng hợp, không phải tín hiệu vào lệnh."
+
+    send_telegram(msg)
+    mark_sent(state, key)
 def target_events(events):
     now = datetime.now(JST)
     result = []
@@ -1725,6 +1795,8 @@ def main():
         # Báo cáo đầu ngày
         if now.hour == 7 and now.minute < 15:
             daily_report(events, state)
+        if now.hour == 7 and now.minute < 15:
+            daily_all_events_report(state)
 
         # Báo cáo phiên Á
         if now.hour == 9 and now.minute < 45:
@@ -1735,11 +1807,11 @@ def main():
             session_report(events, state, "PHIÊN ÂU")
 
         # Báo cáo phiên Mỹ
-        if now.hour == 21:
-            session_report(events, state, "PHIÊN MỸ")
+        if now.hour == 21 and now.minute < 45:
+           session_report(events, state, "PHIÊN MỸ")
 
         # Cập nhật tin vàng trong ngày
-        if now.hour in [9, 13, 17] and now.minute < 15:
+       if now.hour in [9, 13, 17] and now.minute < 15:
             gold_news_update(state)
 
     elif MODE == "daily":
