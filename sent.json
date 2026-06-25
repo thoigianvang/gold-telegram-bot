@@ -9,8 +9,8 @@
   "gold_news_2026-06-18_13": true,
   "gold_news_2026-06-18_14": true,
   "gold_news_2026-06-18_15": true,
-  "last_bias_score": -6,
-  "last_daily_total_score": -6,
+  "last_bias_score": 5,
+  "last_daily_total_score": 5,
   "daily_gold_bias_2026-06-19": true,
   "session_report_TEST PHIÊN_2026-06-19_11": true,
   "session_report_TEST PHIÊN_2026-06-19_12": true,
@@ -37,5 +37,6 @@
   "daily_2026-06-24": true,
   "daily_gold_bias_2026-06-25": true,
   "daily_2026-06-25": true,
-  "daily_all_events_2026-06-25": true
+  "daily_all_events_2026-06-25": true,
+  "daily_gold_bias_2026-06-26": true
 }
