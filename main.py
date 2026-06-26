@@ -733,6 +733,75 @@ def calculate_support_resistance(gold_trend):
         ),
         "status":"OK"
     }
+def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
+    trend = gold_trend.get("trend", "SIDEWAY")
+    price = float(gold_trend.get("price", 0))
+    fib_score = 0
+    sr_score = 0
+
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+    support = float(gold_trend.get("support", 0))
+    resistance = float(gold_trend.get("resistance", 0))
+
+    # 1) EMA Trend Score
+    trend_score = int(gold_trend.get("trend_score", 0))
+
+    # 2) Fibonacci Score
+    if high > 0 and low > 0 and price > 0:
+        fib = calculate_fibonacci(high, low)
+        fib382 = fib["fib382"]
+        fib500 = fib["fib500"]
+        fib618 = fib["fib618"]
+
+        if price < fib618:
+            fib_score = -1
+        elif price > fib382:
+            fib_score = 1
+        else:
+            fib_score = 0
+
+    # 3) Support / Resistance Score
+    if price > 0 and support > 0 and resistance > 0:
+        distance_to_support = abs(price - support)
+        distance_to_resistance = abs(resistance - price)
+
+        if distance_to_resistance < distance_to_support:
+            sr_score = -1
+        elif distance_to_support < distance_to_resistance:
+            sr_score = 1
+        else:
+            sr_score = 0
+
+    # 4) Clamp điểm bên ngoài
+    news_score = clamp_score(news_score, -2, 2)
+    dollar_score = clamp_score(dollar_score, -2, 2)
+    yield_score = clamp_score(yield_score, -2, 2)
+
+    final_score = trend_score + fib_score + sr_score + news_score + dollar_score + yield_score
+    final_score = clamp_score(final_score, -10, 10)
+
+    return {
+        "trend_score": trend_score,
+        "fib_score": fib_score,
+        "sr_score": sr_score,
+        "news_score": news_score,
+        "dollar_score": dollar_score,
+        "yield_score": yield_score,
+        "final_score": final_score
+    }
+def format_score_engine(score):
+    msg = "🧠 SCORE ENGINE\n"
+    msg += f"EMA Trend Score: {score.get('trend_score')}\n"
+    msg += f"Fibonacci Score: {score.get('fib_score')}\n"
+    msg += f"Support/Resistance Score: {score.get('sr_score')}\n"
+    msg += f"News Score: {score.get('news_score')}\n"
+    msg += f"Dollar Score: {score.get('dollar_score')}\n"
+    msg += f"Yield Score: {score.get('yield_score')}\n"
+    msg += "--------------------\n"
+    msg += f"Final Score: {score.get('final_score')}\n"
+
+    return msg
 def find_swings(df):
     highs = df["High"]
     lows = df["Low"]
@@ -2067,10 +2136,20 @@ def manual_test(events, state):
     send_telegram(f"🧪 GOLD QUOTE TEST\n\n{gold_quote}")
 
     gold_trend = get_gold_trend_signal()
-    plan = build_trade_plan(gold_trend, 5)
-    trade_msg = format_trade_plan(gold_trend, plan)
-    send_telegram(trade_msg)
 
+    score = build_score_engine(
+        gold_trend,
+        news_score=0,
+        dollar_score=0,
+        yield_score=0
+    )
+
+    plan = build_trade_plan(gold_trend, score["final_score"])
+
+    trade_msg = format_trade_plan(gold_trend, plan)
+    score_msg = format_score_engine(score)
+
+    send_telegram(trade_msg + "\n\n" + score_msg)
     msg = "✅ BOT TEST OK\n\n"
     msg += f"MODE: {MODE}\n"
     msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
