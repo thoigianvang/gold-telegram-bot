@@ -721,6 +721,101 @@ def calculate_probability(total_score):
     sell_prob = 100 - buy_prob
 
     return buy_prob, sell_prob
+def build_trade_plan(gold_trend, total_score):
+    price = float(gold_trend.get("price", 0))
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+    change_pct = float(gold_trend.get("change_pct", 0))
+
+    if price <= 0:
+        return {
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": "Không có giá XAU/USD hợp lệ."
+        }
+
+    day_range = high - low
+
+    if day_range <= 0:
+        day_range = price * 0.003
+
+    atr_like = max(day_range, price * 0.002)
+
+    if total_score >= 5:
+        direction = "BUY"
+        entry_low = price - atr_like * 0.35
+        entry_high = price - atr_like * 0.15
+        sl = entry_low - atr_like * 0.7
+        tp1 = price + atr_like * 0.6
+        tp2 = price + atr_like * 1.1
+        tp3 = price + atr_like * 1.8
+        note = "BUY bias mạnh. Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
+
+    elif total_score >= 2:
+        direction = "BUY"
+        entry_low = price - atr_like * 0.25
+        entry_high = price - atr_like * 0.10
+        sl = entry_low - atr_like * 0.6
+        tp1 = price + atr_like * 0.45
+        tp2 = price + atr_like * 0.9
+        tp3 = price + atr_like * 1.4
+        note = "BUY bias nhẹ. Không BUY đuổi."
+
+    elif total_score <= -5:
+        direction = "SELL"
+        entry_low = price + atr_like * 0.15
+        entry_high = price + atr_like * 0.35
+        sl = entry_high + atr_like * 0.7
+        tp1 = price - atr_like * 0.6
+        tp2 = price - atr_like * 1.1
+        tp3 = price - atr_like * 1.8
+        note = "SELL bias mạnh. Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
+
+    elif total_score <= -2:
+        direction = "SELL"
+        entry_low = price + atr_like * 0.10
+        entry_high = price + atr_like * 0.25
+        sl = entry_high + atr_like * 0.6
+        tp1 = price - atr_like * 0.45
+        tp2 = price - atr_like * 0.9
+        tp3 = price - atr_like * 1.4
+        note = "SELL bias nhẹ. Không SELL đuổi."
+
+    else:
+        return {
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": "Điểm chưa đủ mạnh. Không vào lệnh."
+        }
+
+    risk = abs(((entry_low + entry_high) / 2) - sl)
+    reward = abs(tp3 - ((entry_low + entry_high) / 2))
+
+    if risk > 0:
+        rr = round(reward / risk, 2)
+    else:
+        rr = "-"
+
+    return {
+        "direction": direction,
+        "entry": f"{round(entry_low, 2)} - {round(entry_high, 2)}",
+        "sl": round(sl, 2),
+        "tp1": round(tp1, 2),
+        "tp2": round(tp2, 2),
+        "tp3": round(tp3, 2),
+        "rr": rr,
+        "note": note
+    }
 def get_market_signal():
     result = {
         "dxy_change": None,
@@ -1802,26 +1897,29 @@ def check_bias_reversal(state, total_score):
 
     state["last_bias_score"] = total_score       
 def manual_test(events, state):
-     session_report(events, state, "TEST TREND")
-     spot_price = get_gold_spot_price()
-     send_telegram(f"🧪 GOLD US/OZ TEST\n\nPrice: {spot_price}")
-     send_telegram(f"🧪 TWELVE DATA KEY TEST\n\nKey exists: {bool(TWELVE_DATA_API_KEY)}")
-     gold_quote = get_gold_ohlc()
-     send_telegram(f"🧪 GOLD QUOTE TEST\n\n{gold_quote}")
+    session_report(events, state, "TEST TREND")
 
-     msg = "✅ BOT TEST OK\n\n"
+    spot_price = get_gold_spot_price()
+    send_telegram(f"🧪 GOLD US/OZ TEST\n\nPrice: {spot_price}")
 
-     msg += f"MODE: {MODE}\n"
+    send_telegram(
+        f"🧪 TWELVE DATA KEY TEST\n\nKey exists: {bool(TWELVE_DATA_API_KEY)}"
+    )
 
-     msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
+    gold_quote = get_gold_ohlc()
+    send_telegram(f"🧪 GOLD QUOTE TEST\n\n{gold_quote}")
 
-     msg += f"Events found: {len(events)}\n\n"
+    gold_trend = get_gold_trend_signal()
+    plan = build_trade_plan(gold_trend, 5)
+    send_telegram(f"🧪 TRADE PLAN TEST\n\n{plan}")
 
-     msg += "Telegram + GitHub Actions đang hoạt động."
+    msg = "✅ BOT TEST OK\n\n"
+    msg += f"MODE: {MODE}\n"
+    msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
+    msg += f"Events found: {len(events)}\n\n"
+    msg += "Telegram + GitHub Actions đang hoạt động."
 
-     send_telegram(msg)
-
-     
+    send_telegram(msg)
 
 def main():
     state = load_state()
