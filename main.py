@@ -1018,7 +1018,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "session": session_data["session"],
         "session_score": session_score,
         "session_note": session_data["note"],
-        "final_score": final_score
+        "final_score": final_score,
         "momentum": momentum_data["momentum"],
         "momentum_score": momentum_score,
         "momentum_note": momentum_data["momentum_note"],
