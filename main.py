@@ -816,6 +816,51 @@ def build_trade_plan(gold_trend, total_score):
         "rr": rr,
         "note": note
     }
+def format_trade_plan(gold_trend, plan):
+    price = gold_trend.get("price", "-")
+    open_price = gold_trend.get("open", "-")
+    high = gold_trend.get("high", "-")
+    low = gold_trend.get("low", "-")
+    change_pct = gold_trend.get("change_pct", "-")
+    trend = gold_trend.get("trend", "-")
+    source = gold_trend.get("source", "-")
+
+    direction = plan.get("direction", "WAIT")
+
+    if direction == "BUY":
+        icon = "🟢"
+    elif direction == "SELL":
+        icon = "🔴"
+    else:
+        icon = "⚪"
+
+    msg = "📊 XAU/USD TRADE PLAN V4\n\n"
+
+    msg += "🥇 GOLD US$/OZ\n"
+    msg += f"Price: {price}\n"
+    msg += f"Open: {open_price}\n"
+    msg += f"High: {high}\n"
+    msg += f"Low: {low}\n"
+    msg += f"Change: {change_pct}%\n"
+    msg += f"Trend: {trend}\n"
+    msg += f"Source: {source}\n\n"
+
+    msg += "🎯 PLAN\n"
+    msg += f"{icon} Direction: {direction}\n"
+    msg += f"Entry Zone: {plan.get('entry')}\n"
+    msg += f"Stop Loss: {plan.get('sl')}\n"
+    msg += f"TP1: {plan.get('tp1')}\n"
+    msg += f"TP2: {plan.get('tp2')}\n"
+    msg += f"TP3: {plan.get('tp3')}\n"
+    msg += f"RR: {plan.get('rr')}\n\n"
+
+    msg += "📝 NOTE\n"
+    msg += f"{plan.get('note')}\n\n"
+
+    msg += "⚠️ Đây là kế hoạch theo mô hình bias, không phải lệnh vào trực tiếp."
+    msg += "\nChỉ vào lệnh khi có nến xác nhận và spread ổn."
+
+    return msg
 def get_market_signal():
     result = {
         "dxy_change": None,
@@ -1911,7 +1956,8 @@ def manual_test(events, state):
 
     gold_trend = get_gold_trend_signal()
     plan = build_trade_plan(gold_trend, 5)
-    send_telegram(f"🧪 TRADE PLAN TEST\n\n{plan}")
+    trade_msg = format_trade_plan(gold_trend, plan)
+    send_telegram(trade_msg)
 
     msg = "✅ BOT TEST OK\n\n"
     msg += f"MODE: {MODE}\n"
