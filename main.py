@@ -942,16 +942,7 @@ def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
     low = float(gold_trend.get("low", 0))
-    fib = calculate_fibonacci(high, low)
-
-    fib382 = fib["fib382"]
-    fib500 = fib["fib500"]
-    fib618 = fib["fib618"]
-    sr = calculate_support_resistance(gold_trend)
-
-    support = sr["support"]
-    resistance = sr["resistance"]
-    change_pct = float(gold_trend.get("change_pct", 0))
+    atr = float(gold_trend.get("atr", 0))
     trend = gold_trend.get("trend", "SIDEWAY")
     trend_score = int(gold_trend.get("trend_score", 0))
 
@@ -967,72 +958,129 @@ def build_trade_plan(gold_trend, total_score):
             "note": "Không có giá XAU/USD hợp lệ."
         }
 
-    day_range = high - low
+    # Fibonacci
+    fib = calculate_fibonacci(high, low)
+    fib382 = fib["fib382"]
+    fib500 = fib["fib500"]
+    fib618 = fib["fib618"]
 
-    if day_range <= 0:
-        day_range = price * 0.003
+    # Support / Resistance
+    sr = calculate_support_resistance(gold_trend)
+    support = float(sr.get("support", 0))
+    resistance = float(sr.get("resistance", 0))
 
-    atr_like = max(day_range, price * 0.002)
+    # ATR thật, fallback nếu lỗi
+    if atr <= 0:
+        day_range = high - low
+        if day_range <= 0:
+            day_range = price * 0.003
+        atr = max(day_range * 0.35, price * 0.002)
 
-    final_score = total_score + trend_score
+    # Không cộng trend_score lần 2 nếu total_score đã lấy từ score engine
+    final_score = total_score
 
     # Khóa hướng theo trend mạnh
     if trend == "STRONG_DOWNTREND":
         final_score = min(final_score, -5)
-
     elif trend == "STRONG_UPTREND":
         final_score = max(final_score, 5)
 
+    # ======================
+    # BUY STRONG
+    # ======================
     if final_score >= 5:
         direction = "BUY"
-        entry_low = min(fib618, fib500)
-        entry_high = max(fib618, fib500)
-        sl = entry_low - atr_like * 0.7
-        tp1 = price + atr_like * 0.6
-        tp2 = price + atr_like * 1.1
-        tp3 = price + atr_like * 1.8
+
+        # BUY phải chờ hồi xuống dưới giá hiện tại
+        fib_entry_low = min(fib618, fib500)
+        fib_entry_high = max(fib618, fib500)
+
+        entry_low = min(fib_entry_low, price - atr * 0.65)
+        entry_high = min(fib_entry_high, price - atr * 0.25)
+
+        # Nếu Fibonacci nằm trên giá hiện tại thì fallback về ATR pullback
+        if entry_high >= price:
+            entry_low = price - atr * 0.80
+            entry_high = price - atr * 0.35
+
+        sl = entry_low - atr * 0.90
+
+        tp1 = price + atr * 0.80
+        tp2 = price + atr * 1.60
+        tp3 = price + atr * 2.60
+
         note = (
             f"BUY bias mạnh. Final Score: {final_score}. "
-            "Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
+            "Không BUY đuổi. Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
         )
 
+    # ======================
+    # BUY LIGHT
+    # ======================
     elif final_score >= 2:
         direction = "BUY"
-        entry_low = min(fib500, fib382)
-        entry_high = max(fib500, fib382)
-        sl = entry_low - atr_like * 0.6
-        tp1 = price + atr_like * 0.45
-        tp2 = price + atr_like * 0.9
-        tp3 = price + atr_like * 1.4
+
+        entry_low = price - atr * 0.60
+        entry_high = price - atr * 0.25
+
+        sl = entry_low - atr * 0.80
+
+        tp1 = price + atr * 0.60
+        tp2 = price + atr * 1.20
+        tp3 = price + atr * 2.00
+
         note = (
             f"BUY bias nhẹ. Final Score: {final_score}. "
-            "Không BUY đuổi. Chỉ BUY khi có nến xác nhận."
+            "Không BUY đuổi. Chỉ BUY khi giá hồi xuống và có nến xác nhận."
         )
 
+    # ======================
+    # SELL STRONG
+    # ======================
     elif final_score <= -5:
         direction = "SELL"
-        entry_low = min(fib500, fib618)
-        entry_high = max(fib500, fib618)
-        sl = entry_high + atr_like * 0.7
-        tp1 = price - atr_like * 0.6
-        tp2 = price - atr_like * 1.1
-        tp3 = price - atr_like * 1.8
+
+        # SELL phải chờ hồi lên trên giá hiện tại
+        fib_entry_low = min(fib500, fib618)
+        fib_entry_high = max(fib500, fib618)
+
+        entry_low = max(fib_entry_low, price + atr * 0.25)
+        entry_high = max(fib_entry_high, price + atr * 0.65)
+
+        # Nếu Fibonacci nằm dưới giá hiện tại thì fallback về ATR pullback
+        if entry_low <= price:
+            entry_low = price + atr * 0.35
+            entry_high = price + atr * 0.80
+
+        sl = entry_high + atr * 0.90
+
+        tp1 = price - atr * 0.80
+        tp2 = price - atr * 1.60
+        tp3 = price - atr * 2.60
+
         note = (
             f"SELL bias mạnh. Final Score: {final_score}. "
-            "Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
+            "Không SELL đuổi. Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
         )
 
+    # ======================
+    # SELL LIGHT
+    # ======================
     elif final_score <= -2:
         direction = "SELL"
-        entry_low = min(fib382, fib500)
-        entry_high = max(fib382, fib500)
-        sl = entry_high + atr_like * 0.6
-        tp1 = price - atr_like * 0.45
-        tp2 = price - atr_like * 0.9
-        tp3 = price - atr_like * 1.4
+
+        entry_low = price + atr * 0.25
+        entry_high = price + atr * 0.60
+
+        sl = entry_high + atr * 0.80
+
+        tp1 = price - atr * 0.60
+        tp2 = price - atr * 1.20
+        tp3 = price - atr * 2.00
+
         note = (
             f"SELL bias nhẹ. Final Score: {final_score}. "
-            "Không SELL đuổi. Chỉ SELL khi có nến xác nhận."
+            "Không SELL đuổi. Chỉ SELL khi giá hồi lên và có nến xác nhận."
         )
 
     else:
@@ -1050,8 +1098,18 @@ def build_trade_plan(gold_trend, total_score):
             )
         }
 
-    risk = abs(((entry_low + entry_high) / 2) - sl)
-    reward = abs(tp3 - ((entry_low + entry_high) / 2))
+    # Làm tròn
+    entry_low = round(entry_low, 2)
+    entry_high = round(entry_high, 2)
+    sl = round(sl, 2)
+    tp1 = round(tp1, 2)
+    tp2 = round(tp2, 2)
+    tp3 = round(tp3, 2)
+
+    # Tính RR theo TP3
+    entry_mid = (entry_low + entry_high) / 2
+    risk = abs(entry_mid - sl)
+    reward = abs(tp3 - entry_mid)
 
     if risk > 0:
         rr = round(reward / risk, 2)
@@ -1060,11 +1118,11 @@ def build_trade_plan(gold_trend, total_score):
 
     return {
         "direction": direction,
-        "entry": f"{round(entry_low, 2)} - {round(entry_high, 2)}",
-        "sl": round(sl, 2),
-        "tp1": round(tp1, 2),
-        "tp2": round(tp2, 2),
-        "tp3": round(tp3, 2),
+        "entry": f"{entry_low} - {entry_high}",
+        "sl": sl,
+        "tp1": tp1,
+        "tp2": tp2,
+        "tp3": tp3,
         "rr": rr,
         "note": note
     }
