@@ -765,6 +765,130 @@ def get_session_score():
             "score": -2,
             "note": "Thanh khoản thấp. Tránh giữ lệnh hoặc mở lệnh mới."
         }
+def get_momentum_score(gold_trend):
+    try:
+        import yfinance as yf
+
+        symbols = ["XAUUSD=X", "GC=F"]
+        df = None
+
+        for symbol in symbols:
+            temp = yf.download(
+                symbol,
+                period="5d",
+                interval="15m",
+                progress=False,
+                auto_adjust=False
+            )
+
+            if temp is not None and not temp.empty and len(temp) >= 30:
+                df = temp
+                break
+
+        if df is None or df.empty:
+            return {
+                "momentum_score": 0,
+                "momentum": "NO_DATA",
+                "momentum_note": "Không có dữ liệu M15."
+            }
+
+        open_ = df["Open"]
+        high = df["High"]
+        low = df["Low"]
+        close = df["Close"]
+
+        if hasattr(open_, "columns"):
+            open_ = open_.iloc[:, 0]
+        if hasattr(high, "columns"):
+            high = high.iloc[:, 0]
+        if hasattr(low, "columns"):
+            low = low.iloc[:, 0]
+        if hasattr(close, "columns"):
+            close = close.iloc[:, 0]
+
+        last_open = float(open_.iloc[-1])
+        last_high = float(high.iloc[-1])
+        last_low = float(low.iloc[-1])
+        last_close = float(close.iloc[-1])
+
+        prev_close_1 = float(close.iloc[-2])
+        prev_close_2 = float(close.iloc[-3])
+
+        candle_range = last_high - last_low
+        candle_body = abs(last_close - last_open)
+
+        if candle_range <= 0:
+            return {
+                "momentum_score": 0,
+                "momentum": "NO_RANGE",
+                "momentum_note": "Nến không có biên độ."
+            }
+
+        body_ratio = candle_body / candle_range
+        close_position = (last_close - last_low) / candle_range
+
+        recent_high = float(high.tail(20).max())
+        recent_low = float(low.tail(20).min())
+
+        score = 0
+        notes = []
+
+        # BUY momentum
+        if last_close > last_open:
+            score += 1
+            notes.append("Nến cuối xanh")
+
+        if last_close > prev_close_1 > prev_close_2:
+            score += 1
+            notes.append("3 nến tăng liên tiếp")
+
+        if close_position >= 0.70 and body_ratio >= 0.50:
+            score += 1
+            notes.append("Đóng cửa gần đỉnh nến")
+
+        if last_close >= recent_high * 0.999:
+            score += 1
+            notes.append("Giá gần phá high 20 nến")
+
+        # SELL momentum
+        if last_close < last_open:
+            score -= 1
+            notes.append("Nến cuối đỏ")
+
+        if last_close < prev_close_1 < prev_close_2:
+            score -= 1
+            notes.append("3 nến giảm liên tiếp")
+
+        if close_position <= 0.30 and body_ratio >= 0.50:
+            score -= 1
+            notes.append("Đóng cửa gần đáy nến")
+
+        if last_close <= recent_low * 1.001:
+            score -= 1
+            notes.append("Giá gần phá low 20 nến")
+
+        score = clamp_score(score, -3, 3)
+
+        if score >= 2:
+            momentum = "BULLISH"
+        elif score <= -2:
+            momentum = "BEARISH"
+        else:
+            momentum = "NEUTRAL"
+
+        return {
+            "momentum_score": score,
+            "momentum": momentum,
+            "momentum_note": ", ".join(notes) if notes else "Momentum trung tính."
+        }
+
+    except Exception as e:
+        print("MOMENTUM ERROR:", str(e))
+        return {
+            "momentum_score": 0,
+            "momentum": "ERROR",
+            "momentum_note": str(e)
+        }
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -866,6 +990,8 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
 
     session_data = get_session_score()
     session_score = session_data["score"]
+    momentum_data = get_momentum_score(gold_trend)
+    momentum_score = momentum_data["momentum_score"]
 
     final_score = (
         ema_score
@@ -876,6 +1002,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + dollar_score
         + yield_score
         + session_score
+        + momentum_score
     )
 
     final_score = clamp_score(final_score, -10, 10)
@@ -892,6 +1019,9 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "session_score": session_score,
         "session_note": session_data["note"],
         "final_score": final_score
+        "momentum": momentum_data["momentum"],
+        "momentum_score": momentum_score,
+        "momentum_note": momentum_data["momentum_note"],
     }
 def format_score_engine(score):
     msg = "🧠 SCORE ENGINE\n"
@@ -903,6 +1033,8 @@ def format_score_engine(score):
     msg += f"Dollar Score: {score.get('dollar_score')}\n"
     msg += f"Yield Score: {score.get('yield_score')}\n"
     msg += "--------------------\n"
+    msg += f"Momentum: {score.get('momentum')}\n"
+    msg += f"Momentum Score: {score.get('momentum_score')}\n"
     msg += f"Final Score: {score.get('final_score')}\n"
     msg += f"Session: {score.get('session')}\n"
     msg += f"Session Score: {score.get('session_score')}\n"
