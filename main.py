@@ -1064,6 +1064,53 @@ def get_gold_spot_price():
     except Exception as e:
         print("TWELVE DATA PRICE ERROR:", str(e))
         return None
+def get_gold_ohlc():
+    try:
+        if not TWELVE_DATA_API_KEY:
+            print("TWELVE DATA API KEY MISSING")
+            return None
+
+        url = "https://api.twelvedata.com/quote"
+
+        params = {
+            "symbol": "XAU/USD",
+            "apikey": TWELVE_DATA_API_KEY
+        }
+
+        r = requests.get(url, params=params, timeout=20)
+        print("TWELVE DATA QUOTE STATUS:", r.status_code)
+        print("TWELVE DATA QUOTE RESPONSE:", r.text[:300])
+
+        r.raise_for_status()
+        data = r.json()
+
+        if "close" not in data:
+            print("TWELVE DATA QUOTE EMPTY:", data)
+            return None
+
+        price = float(data.get("close", 0))
+        open_price = float(data.get("open", 0))
+        high = float(data.get("high", 0))
+        low = float(data.get("low", 0))
+
+        if open_price > 0:
+            change_pct = round(((price - open_price) / open_price) * 100, 2)
+        else:
+            change_pct = 0
+
+        return {
+            "symbol": "XAU/USD",
+            "price": round(price, 2),
+            "open": round(open_price, 2),
+            "high": round(high, 2),
+            "low": round(low, 2),
+            "change_pct": change_pct,
+            "source": "TwelveData"
+        }
+
+    except Exception as e:
+        print("TWELVE DATA QUOTE ERROR:", str(e))
+        return None
 def get_gold_trend_signal():
     try:
         import yfinance as yf
@@ -1709,6 +1756,8 @@ def manual_test(events, state):
      spot_price = get_gold_spot_price()
      send_telegram(f"🧪 GOLD US/OZ TEST\n\nPrice: {spot_price}")
      send_telegram(f"🧪 TWELVE DATA KEY TEST\n\nKey exists: {bool(TWELVE_DATA_API_KEY)}")
+     gold_quote = get_gold_ohlc()
+     send_telegram(f"🧪 GOLD QUOTE TEST\n\n{gold_quote}")
 
      msg = "✅ BOT TEST OK\n\n"
 
