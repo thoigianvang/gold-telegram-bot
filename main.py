@@ -1113,11 +1113,37 @@ def get_gold_ohlc():
         return None
 def get_gold_trend_signal():
     try:
+        # 1) Lấy giá Spot Gold US$/oz từ TwelveData
+        gold = get_gold_ohlc()
+
+        if not gold:
+            return {
+                "symbol": "XAU/USD",
+                "source": "TwelveData",
+                "price": 0,
+                "open": 0,
+                "high": 0,
+                "low": 0,
+                "change_pct": 0,
+                "ema20": 0,
+                "ema50": 0,
+                "ema200": 0,
+                "trend": "NO_SPOT_DATA",
+                "trend_score": -1
+            }
+
+        spot_price = float(gold.get("price", 0))
+        open_price = float(gold.get("open", 0))
+        high = float(gold.get("high", 0))
+        low = float(gold.get("low", 0))
+        change_pct = float(gold.get("change_pct", 0))
+
+        # 2) Tạm dùng Yahoo chỉ để lấy dữ liệu lịch sử tính EMA
         import yfinance as yf
 
         symbols = ["XAUUSD=X", "GC=F"]
         df = None
-        used_symbol = None
+        used_history_symbol = None
 
         for symbol in symbols:
             try:
@@ -1131,21 +1157,27 @@ def get_gold_trend_signal():
 
                 if temp is not None and not temp.empty and len(temp) >= 200:
                     df = temp
-                    used_symbol = symbol
+                    used_history_symbol = symbol
                     break
 
             except Exception as inner_error:
-                print(f"GOLD DATA ERROR {symbol}:", str(inner_error))
+                print(f"GOLD HISTORY ERROR {symbol}:", str(inner_error))
 
         if df is None or df.empty:
             return {
-                "symbol": "NONE",
-                "price": 0,
+                "symbol": "XAU/USD",
+                "source": "TwelveData",
+                "history_source": "NONE",
+                "price": round(spot_price, 2),
+                "open": round(open_price, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "change_pct": round(change_pct, 2),
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
-                "trend": "NO_DATA",
-                "trend_score": -1
+                "trend": "NO_HISTORY_DATA",
+                "trend_score": 0
             }
 
         close = df["Close"]
@@ -1157,19 +1189,27 @@ def get_gold_trend_signal():
 
         if len(close) < 200:
             return {
-                "symbol": used_symbol,
-                "price": 0,
+                "symbol": "XAU/USD",
+                "source": "TwelveData",
+                "history_source": used_history_symbol,
+                "price": round(spot_price, 2),
+                "open": round(open_price, 2),
+                "high": round(high, 2),
+                "low": round(low, 2),
+                "change_pct": round(change_pct, 2),
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
-                "trend": "NOT_ENOUGH_DATA",
-                "trend_score": -1
+                "trend": "NOT_ENOUGH_HISTORY",
+                "trend_score": 0
             }
 
-        price = float(close.iloc[-1])
+        # 3) Tính EMA từ lịch sử, nhưng dùng giá spot hiện tại để so với EMA
         ema20 = float(close.ewm(span=20, adjust=False).mean().iloc[-1])
         ema50 = float(close.ewm(span=50, adjust=False).mean().iloc[-1])
         ema200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1])
+
+        price = spot_price
 
         if price > ema20 > ema50 > ema200:
             trend = "STRONG_UPTREND"
@@ -1200,8 +1240,14 @@ def get_gold_trend_signal():
             trend_score = 0
 
         return {
-            "symbol": used_symbol,
+            "symbol": "XAU/USD",
+            "source": "TwelveData",
+            "history_source": used_history_symbol,
             "price": round(price, 2),
+            "open": round(open_price, 2),
+            "high": round(high, 2),
+            "low": round(low, 2),
+            "change_pct": round(change_pct, 2),
             "ema20": round(ema20, 2),
             "ema50": round(ema50, 2),
             "ema200": round(ema200, 2),
@@ -1213,15 +1259,19 @@ def get_gold_trend_signal():
         print("GOLD TREND ERROR:", str(e))
 
         return {
-            "symbol": "ERROR",
+            "symbol": "XAU/USD",
+            "source": "TwelveData",
             "price": 0,
+            "open": 0,
+            "high": 0,
+            "low": 0,
+            "change_pct": 0,
             "ema20": 0,
             "ema50": 0,
             "ema200": 0,
             "trend": "ERROR",
             "trend_score": -1
         }
-
 def session_report(events, state, session_name, total_score=None):
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
