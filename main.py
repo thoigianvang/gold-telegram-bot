@@ -1190,6 +1190,62 @@ def calculate_score_engine(gold):
     detail["total"] = score
 
     return detail
+def apply_trade_filters(plan, gold_trend, score):
+    direction = plan.get("direction", "WAIT")
+    status = plan.get("status", "WAIT")
+
+    if direction == "WAIT":
+        return plan
+
+    rr = plan.get("rr", "-")
+    try:
+        rr_value = float(rr)
+    except:
+        rr_value = 0
+
+    adx = float(gold_trend.get("adx", 0))
+    trend = gold_trend.get("trend", "SIDEWAY")
+    probability = int(score.get("probability", 50))
+    momentum = score.get("momentum", "NEUTRAL")
+    session = score.get("session", "UNKNOWN")
+
+    block_reasons = []
+
+    if rr_value < 1.5:
+        block_reasons.append(f"RR thấp ({rr_value}). Tối thiểu cần 1.5.")
+
+    if adx < 20:
+        block_reasons.append(f"ADX yếu ({adx}). Xu hướng chưa đủ lực.")
+
+    if probability < 60:
+        block_reasons.append(f"Probability thấp ({probability}%). Không đủ lợi thế.")
+
+    if direction == "BUY" and momentum == "BEARISH":
+        block_reasons.append("Momentum BEARISH xung đột với BUY.")
+
+    if direction == "SELL" and momentum == "BULLISH":
+        block_reasons.append("Momentum BULLISH xung đột với SELL.")
+
+    if session == "LOW_LIQUIDITY":
+        block_reasons.append("Phiên thanh khoản thấp.")
+
+    if trend in ["SIDEWAY", "RECOVERY_BUT_WEAK", "PULLBACK_BUT_STILL_OK"] and probability < 75:
+        block_reasons.append(f"Trend chưa rõ ({trend}) và Probability chưa đủ cao.")
+
+    if block_reasons:
+        return {
+            "status": "NO_TRADE",
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": "NO TRADE. " + " ".join(block_reasons)
+        }
+
+    return plan
 def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -2821,6 +2877,7 @@ def manual_test(events, state):
     )
 
     plan = build_trade_plan(gold_trend, score["final_score"])
+    plan = apply_trade_filters(plan, gold_trend, score)
 
     trade_msg = format_trade_plan(gold_trend, plan, score)
     score_msg = format_score_engine(score)
