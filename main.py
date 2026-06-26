@@ -721,6 +721,27 @@ def calculate_probability(total_score):
     sell_prob = 100 - buy_prob
 
     return buy_prob, sell_prob
+def calculate_support_resistance(gold_trend):
+    price = float(gold_trend.get("price", 0))
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+
+    if price <= 0 or high <= 0 or low <= 0:
+        return {
+            "support": "-",
+            "resistance": "-",
+            "mid": "-",
+            "status": "NO_DATA"
+        }
+
+    mid = (high + low) / 2
+
+    return {
+        "support": round(low, 2),
+        "resistance": round(high, 2),
+        "mid": round(mid, 2),
+        "status": "OK"
+    }
 def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -730,6 +751,10 @@ def build_trade_plan(gold_trend, total_score):
     fib382 = fib["fib382"]
     fib500 = fib["fib500"]
     fib618 = fib["fib618"]
+    sr = calculate_support_resistance(gold_trend)
+
+    support = sr["support"]
+    resistance = sr["resistance"]
     change_pct = float(gold_trend.get("change_pct", 0))
     trend = gold_trend.get("trend", "SIDEWAY")
     trend_score = int(gold_trend.get("trend_score", 0))
@@ -878,6 +903,12 @@ def format_trade_plan(gold_trend, plan):
     msg += f"38.2% : {fib['fib382']}\n"
     msg += f"50.0% : {fib['fib500']}\n"
     msg += f"61.8% : {fib['fib618']}\n"
+    sr = calculate_support_resistance(gold_trend)
+
+    msg += "\n🧱 Support / Resistance\n"
+    msg += f"Support: {sr['support']}\n"
+    msg += f"Resistance: {sr['resistance']}\n"
+    msg += f"Mid: {sr['mid']}\n"
     msg += f"Change: {change_pct}%\n"
     msg += f"Trend: {trend}\n"
     msg += f"Source: {source}\n\n"
