@@ -733,6 +733,38 @@ def calculate_support_resistance(gold_trend):
         ),
         "status":"OK"
     }
+def get_session_score():
+    now = datetime.now(JST)
+    hour = now.hour
+
+    # Giờ Nhật
+    if 7 <= hour < 15:
+        return {
+            "session": "TOKYO",
+            "score": 0,
+            "note": "Phiên Á: biến động thường yếu, không ép lệnh."
+        }
+
+    elif 15 <= hour < 21:
+        return {
+            "session": "LONDON",
+            "score": 1,
+            "note": "Phiên Âu: biến động tốt hơn, có thể tìm setup."
+        }
+
+    elif 21 <= hour <= 23 or 0 <= hour < 2:
+        return {
+            "session": "NEW_YORK",
+            "score": 2,
+            "note": "Phiên Mỹ: biến động mạnh, ưu tiên setup rõ."
+        }
+
+    else:
+        return {
+            "session": "LOW_LIQUIDITY",
+            "score": -2,
+            "note": "Thanh khoản thấp. Tránh giữ lệnh hoặc mở lệnh mới."
+        }
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -832,6 +864,9 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     dollar_score = clamp_score(dollar_score, -2, 2)
     yield_score = clamp_score(yield_score, -2, 2)
 
+    session_data = get_session_score()
+    session_score = session_data["score"]
+
     final_score = (
         ema_score
         + adx_score
@@ -840,6 +875,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + news_score
         + dollar_score
         + yield_score
+        + session_score
     )
 
     final_score = clamp_score(final_score, -10, 10)
@@ -852,6 +888,9 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "news_score": news_score,
         "dollar_score": dollar_score,
         "yield_score": yield_score,
+        "session": session_data["session"],
+        "session_score": session_score,
+        "session_note": session_data["note"],
         "final_score": final_score
     }
 def format_score_engine(score):
@@ -865,6 +904,8 @@ def format_score_engine(score):
     msg += f"Yield Score: {score.get('yield_score')}\n"
     msg += "--------------------\n"
     msg += f"Final Score: {score.get('final_score')}\n"
+    msg += f"Session: {score.get('session')}\n"
+    msg += f"Session Score: {score.get('session_score')}\n"
 
     return msg
 def find_swings(df):
