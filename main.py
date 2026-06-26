@@ -199,82 +199,80 @@ def gold_bias_from_event(title, actual, forecast):
 
 def score_news_title(title):
     t = title.lower()
-
     score = 0
     reasons = []
 
-    strong_buy = [
+    bullish_patterns = [
+        "gold rises",
+        "gold gains",
+        "gold climbs",
+        "gold rebounds",
+        "gold extends gains",
+        "gold hits record",
+        "gold nears record",
         "safe haven",
-        "geopolitical",
+        "geopolitical risk",
         "war",
         "conflict",
-        "fed cut",
-        "rate cut",
+        "tension",
+        "fed rate cut",
+        "rate cut bets",
         "dovish fed",
-        "dollar weak",
         "dollar falls",
+        "dollar weakens",
+        "weaker dollar",
+        "treasury yields fall",
         "yields fall",
         "yields drop",
+        "inflation cools",
         "recession fears",
-        "bank crisis"
     ]
 
-    strong_sell = [
-        "hawkish fed",
-        "fed fuels us dollar",
-        "rate hike",
-        "higher for longer",
-        "strong dollar",
-        "dollar rises",
-        "dollar stronger",
-        "yields rise",
-        "yields higher",
-        "inflation concerns",
-        "inflation hot",
-        "strong jobs",
+    bearish_patterns = [
         "gold falls",
         "gold drops",
-        "gold down",
+        "gold slips",
         "gold tumbles",
-        "gold slides",
-        "gold plunges",
-        "gold implodes"
+        "gold retreats",
+        "gold under pressure",
+        "gold prices fall",
+        "gold prices tumble",
+        "stronger dollar",
+        "dollar rises",
+        "dollar strengthens",
+        "dollar hits",
+        "treasury yields rise",
+        "yields rise",
+        "yields climb",
+        "hawkish fed",
+        "rate hike",
+        "higher for longer",
+        "inflation concerns",
+        "strong jobs",
+        "strong retail sales",
     ]
 
-    weak_buy = [
-        "gold rebounds",
-        "gold recovers",
-        "gold gains",
-        "bullish gold"
-    ]
-
-    weak_sell = [
-        "profit taking",
-        "gold weak",
-        "bearish gold"
-    ]
-
-    for word in strong_buy:
-        if word in t:
+    for p in bullish_patterns:
+        if p in t:
             score += 2
-            reasons.append(f"+2 {word}")
+            reasons.append(f"BULLISH: {p}")
 
-    for word in weak_buy:
-        if word in t:
-            score += 1
-            reasons.append(f"+1 {word}")
-
-    for word in strong_sell:
-        if word in t:
+    for p in bearish_patterns:
+        if p in t:
             score -= 2
-            reasons.append(f"-2 {word}")
+            reasons.append(f"BEARISH: {p}")
 
-    for word in weak_sell:
-        if word in t:
-            score -= 1
-            reasons.append(f"-1 {word}")
+    # Nếu tiêu đề có vàng + USD mạnh / yield tăng thì ưu tiên bearish
+    if "gold" in t and ("stronger dollar" in t or "dollar rises" in t or "yields rise" in t):
+        score -= 2
+        reasons.append("BEARISH: gold pressured by USD/yields")
 
-    score = max(min(score, 5), -5)
+    # Nếu tiêu đề có vàng + USD yếu / yield giảm thì ưu tiên bullish
+    if "gold" in t and ("weaker dollar" in t or "dollar falls" in t or "yields fall" in t):
+        score += 2
+        reasons.append("BULLISH: gold supported by weak USD/yields")
+
+    score = clamp_score(score, -4, 4)
 
     return score, reasons
 
