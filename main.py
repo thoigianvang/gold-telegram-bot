@@ -1034,43 +1034,35 @@ def session_alert(state, total_score):
     send_telegram(msg)
     mark_sent(state, session_key)
 def get_gold_spot_price():
-    """
-    Lấy giá Gold US$/oz gần realtime.
-    Ưu tiên Stooq XAUUSD.
-    Nếu lỗi thì trả về None.
-    """
     try:
-        import csv
-        import io
+        if not TWELVE_DATA_API_KEY:
+            print("TWELVE DATA API KEY MISSING")
+            return None
 
-        url = "https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv"
+        url = "https://api.twelvedata.com/price"
 
-        r = requests.get(url, timeout=20)
+        params = {
+            "symbol": "XAU/USD",
+            "apikey": TWELVE_DATA_API_KEY
+        }
+
+        r = requests.get(url, params=params, timeout=20)
+        print("TWELVE DATA STATUS:", r.status_code)
+        print("TWELVE DATA RESPONSE:", r.text[:300])
+
         r.raise_for_status()
+        data = r.json()
 
-        reader = csv.DictReader(io.StringIO(r.text))
-        rows = list(reader)
+        price = data.get("price")
 
-        if not rows:
-            print("GOLD US/OZ NO DATA")
+        if not price:
+            print("TWELVE DATA PRICE EMPTY:", data)
             return None
 
-        row = rows[0]
-
-        close_value = row.get("Close")
-
-        if not close_value or close_value.lower() == "n/d":
-            print("GOLD US/OZ CLOSE EMPTY:", row)
-            return None
-
-        price = float(close_value)
-
-        print("GOLD US/OZ PRICE:", price)
-
-        return round(price, 2)
+        return round(float(price), 2)
 
     except Exception as e:
-        print("GOLD US/OZ ERROR:", str(e))
+        print("TWELVE DATA PRICE ERROR:", str(e))
         return None
 def get_gold_trend_signal():
     try:
