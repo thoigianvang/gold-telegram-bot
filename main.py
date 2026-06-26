@@ -1034,34 +1034,42 @@ def session_alert(state, total_score):
     mark_sent(state, session_key)
 def get_gold_spot_price():
     """
-    Lấy giá vàng spot gần realtime.
-    Ưu tiên XAUUSD=X.
+    Lấy giá Gold US$/oz gần realtime.
+    Ưu tiên Stooq XAUUSD.
     Nếu lỗi thì trả về None.
     """
     try:
-        import yfinance as yf
+        import csv
+        import io
 
-        ticker = yf.Ticker("XAUUSD=X")
-        hist = ticker.history(period="2d", interval="1h")
+        url = "https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv"
 
-        if hist is None or hist.empty:
-            print("XAUUSD SPOT NO DATA")
+        r = requests.get(url, timeout=20)
+        r.raise_for_status()
+
+        reader = csv.DictReader(io.StringIO(r.text))
+        rows = list(reader)
+
+        if not rows:
+            print("GOLD US/OZ NO DATA")
             return None
 
-        close = hist["Close"].dropna()
+        row = rows[0]
 
-        if len(close) == 0:
-            print("XAUUSD SPOT CLOSE EMPTY")
+        close_value = row.get("Close")
+
+        if not close_value or close_value.lower() == "n/d":
+            print("GOLD US/OZ CLOSE EMPTY:", row)
             return None
 
-        price = float(close.iloc[-1])
+        price = float(close_value)
 
-        print("XAUUSD SPOT PRICE:", price)
+        print("GOLD US/OZ PRICE:", price)
 
         return round(price, 2)
 
     except Exception as e:
-        print("XAUUSD SPOT ERROR:", str(e))
+        print("GOLD US/OZ ERROR:", str(e))
         return None
 def get_gold_trend_signal():
     try:
@@ -1706,7 +1714,7 @@ def check_bias_reversal(state, total_score):
 def manual_test(events, state):
      session_report(events, state, "TEST TREND")
      spot_price = get_gold_spot_price()
-     send_telegram(f"🧪 XAUUSD SPOT TEST\n\nPrice: {spot_price}")
+     send_telegram(f"🧪 GOLD US/OZ TEST\n\nPrice: {spot_price}")
 
      msg = "✅ BOT TEST OK\n\n"
 
