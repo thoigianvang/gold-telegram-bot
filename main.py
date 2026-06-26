@@ -202,80 +202,54 @@ def score_news_title(title):
     score = 0
     reasons = []
 
-    bullish_patterns = [
-        "gold rises",
-        "gold gains",
-        "gold climbs",
-        "gold rebounds",
-        "gold extends gains",
-        "gold hits record",
-        "gold nears record",
-        "safe haven",
-        "geopolitical risk",
-        "war",
-        "conflict",
-        "tension",
-        "fed rate cut",
-        "rate cut bets",
-        "dovish fed",
-        "dollar falls",
-        "dollar weakens",
-        "weaker dollar",
-        "treasury yields fall",
-        "yields fall",
-        "yields drop",
-        "inflation cools",
-        "recession fears",
+    bullish = [
+        "gold rises", "gold gains", "gold climbs", "gold rebounds",
+        "gold extends gains", "gold hits record", "gold nears record",
+        "safe haven", "geopolitical risk", "war", "conflict",
+        "fed rate cut", "rate cut bets", "dovish fed",
+        "dollar falls", "dollar weakens", "weaker dollar",
+        "yields fall", "yields drop", "treasury yields fall",
+        "inflation cools", "recession fears"
     ]
 
-    bearish_patterns = [
-        "gold falls",
-        "gold drops",
-        "gold slips",
-        "gold tumbles",
-        "gold retreats",
-        "gold under pressure",
-        "gold prices fall",
-        "gold prices tumble",
-        "stronger dollar",
-        "dollar rises",
-        "dollar strengthens",
-        "dollar hits",
-        "treasury yields rise",
-        "yields rise",
-        "yields climb",
-        "hawkish fed",
-        "rate hike",
-        "higher for longer",
-        "inflation concerns",
-        "strong jobs",
-        "strong retail sales",
+    bearish = [
+        "gold falls", "gold drops", "gold slips", "gold tumbles",
+        "gold retreats", "gold under pressure", "gold prices fall",
+        "gold prices tumble", "stronger dollar", "dollar rises",
+        "dollar strengthens", "dollar hits", "yields rise",
+        "yields climb", "treasury yields rise", "hawkish fed",
+        "rate hike", "higher for longer", "inflation concerns",
+        "strong jobs", "strong retail sales"
     ]
 
-    for p in bullish_patterns:
-        if p in t:
+    for word in bullish:
+        if word in t:
             score += 2
-            reasons.append(f"BULLISH: {p}")
+            reasons.append("Bullish Gold")
 
-    for p in bearish_patterns:
-        if p in t:
+    for word in bearish:
+        if word in t:
             score -= 2
-            reasons.append(f"BEARISH: {p}")
+            reasons.append("Bearish Gold")
 
-    # Nếu tiêu đề có vàng + USD mạnh / yield tăng thì ưu tiên bearish
-    if "gold" in t and ("stronger dollar" in t or "dollar rises" in t or "yields rise" in t):
-        score -= 2
-        reasons.append("BEARISH: gold pressured by USD/yields")
-
-    # Nếu tiêu đề có vàng + USD yếu / yield giảm thì ưu tiên bullish
+    # Gold lên nhưng lý do là USD/yield yếu = bullish rõ
     if "gold" in t and ("weaker dollar" in t or "dollar falls" in t or "yields fall" in t):
         score += 2
-        reasons.append("BULLISH: gold supported by weak USD/yields")
+        reasons.append("Gold supported by weak USD/yields")
+
+    # Gold giảm vì USD/yield mạnh = bearish rõ
+    if "gold" in t and ("stronger dollar" in t or "dollar rises" in t or "yields rise" in t):
+        score -= 2
+        reasons.append("Gold pressured by strong USD/yields")
+
+    # Nếu có cả bullish và bearish thì giảm độ mạnh
+    if any("Bullish" in r for r in reasons) and any("Bearish" in r for r in reasons):
+        score = int(score / 2)
+        reasons.append("Mixed signal")
 
     score = clamp_score(score, -4, 4)
 
     return score, reasons
-
 def parse_number(value):
     try:
         if value is None:
