@@ -721,27 +721,35 @@ def calculate_probability(total_score):
     sell_prob = 100 - buy_prob
 
     return buy_prob, sell_prob
+
 def calculate_support_resistance(gold_trend):
-    price = float(gold_trend.get("price", 0))
-    high = float(gold_trend.get("high", 0))
-    low = float(gold_trend.get("low", 0))
-
-    if price <= 0 or high <= 0 or low <= 0:
-        return {
-            "support": "-",
-            "resistance": "-",
-            "mid": "-",
-            "status": "NO_DATA"
-        }
-
-    mid = (high + low) / 2
 
     return {
-        "support": round(low, 2),
-        "resistance": round(high, 2),
-        "mid": round(mid, 2),
-        "status": "OK"
+        "support": gold_trend["support"],
+        "resistance": gold_trend["resistance"],
+        "mid": round(
+            (gold_trend["support"] + gold_trend["resistance"]) / 2,
+            2
+        ),
+        "status":"OK"
     }
+def find_swings(df):
+    highs = df["High"]
+    lows = df["Low"]
+
+    if hasattr(highs, "columns"):
+        highs = highs.iloc[:, 0]
+
+    if hasattr(lows, "columns"):
+        lows = lows.iloc[:, 0]
+
+    highs = highs.tail(120)
+    lows = lows.tail(120)
+
+    resistance = float(highs.max())
+    support = float(lows.min())
+
+    return support, resistance
 def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -1338,11 +1346,14 @@ def get_gold_trend_signal():
             return {
                 "symbol": "XAU/USD",
                 "source": "TwelveData",
+                "history_source": "NONE",
                 "price": 0,
                 "open": 0,
                 "high": 0,
                 "low": 0,
                 "change_pct": 0,
+                "support": 0,
+                "resistance": 0,
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
@@ -1356,7 +1367,7 @@ def get_gold_trend_signal():
         low = float(gold.get("low", 0))
         change_pct = float(gold.get("change_pct", 0))
 
-        # 2) Tạm dùng Yahoo chỉ để lấy dữ liệu lịch sử tính EMA
+        # 2) Tạm dùng Yahoo chỉ để lấy dữ liệu lịch sử tính EMA + Swing S/R
         import yfinance as yf
 
         symbols = ["XAUUSD=X", "GC=F"]
@@ -1391,6 +1402,8 @@ def get_gold_trend_signal():
                 "high": round(high, 2),
                 "low": round(low, 2),
                 "change_pct": round(change_pct, 2),
+                "support": round(low, 2),
+                "resistance": round(high, 2),
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
@@ -1415,6 +1428,8 @@ def get_gold_trend_signal():
                 "high": round(high, 2),
                 "low": round(low, 2),
                 "change_pct": round(change_pct, 2),
+                "support": round(low, 2),
+                "resistance": round(high, 2),
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
@@ -1426,6 +1441,14 @@ def get_gold_trend_signal():
         ema20 = float(close.ewm(span=20, adjust=False).mean().iloc[-1])
         ema50 = float(close.ewm(span=50, adjust=False).mean().iloc[-1])
         ema200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1])
+
+        # 4) Tính Swing Support / Resistance từ 120 nến gần nhất
+        try:
+            support, resistance = find_swings(df)
+        except Exception as sr_error:
+            print("SWING SR ERROR:", str(sr_error))
+            support = low
+            resistance = high
 
         price = spot_price
 
@@ -1466,6 +1489,8 @@ def get_gold_trend_signal():
             "high": round(high, 2),
             "low": round(low, 2),
             "change_pct": round(change_pct, 2),
+            "support": round(support, 2),
+            "resistance": round(resistance, 2),
             "ema20": round(ema20, 2),
             "ema50": round(ema50, 2),
             "ema200": round(ema200, 2),
@@ -1479,11 +1504,14 @@ def get_gold_trend_signal():
         return {
             "symbol": "XAU/USD",
             "source": "TwelveData",
+            "history_source": "ERROR",
             "price": 0,
             "open": 0,
             "high": 0,
             "low": 0,
             "change_pct": 0,
+            "support": 0,
+            "resistance": 0,
             "ema20": 0,
             "ema50": 0,
             "ema200": 0,
