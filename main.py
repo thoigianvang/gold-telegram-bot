@@ -981,9 +981,12 @@ def build_trade_plan(gold_trend, total_score):
         }
 
     fib = calculate_fibonacci(high, low)
-    fib382 = fib["fib382"]
     fib500 = fib["fib500"]
     fib618 = fib["fib618"]
+
+    sr = calculate_support_resistance(gold_trend)
+    support = float(sr.get("support", low))
+    resistance = float(sr.get("resistance", high))
 
     if atr <= 0:
         day_range = high - low
@@ -999,7 +1002,7 @@ def build_trade_plan(gold_trend, total_score):
         final_score = max(final_score, 5)
 
     # ======================
-    # BUY STRONG
+    # BUY
     # ======================
     if final_score >= 5:
         direction = "BUY"
@@ -1007,7 +1010,6 @@ def build_trade_plan(gold_trend, total_score):
         entry_low = price - atr * 0.80
         entry_high = price - atr * 0.35
 
-        # Nếu fib vùng hồi tốt nằm dưới giá, ưu tiên fib
         fib_low = min(fib618, fib500)
         fib_high = max(fib618, fib500)
 
@@ -1015,23 +1017,32 @@ def build_trade_plan(gold_trend, total_score):
             entry_low = min(entry_low, fib_low)
             entry_high = max(entry_high, fib_high)
 
-        sl = entry_low - atr * 0.90
+        sl = min(support - atr * 0.25, entry_low - atr * 0.70)
+
+        entry_mid = (entry_low + entry_high) / 2
+
+        tp1 = max(resistance, entry_mid + atr * 0.80)
+        tp2 = tp1 + atr * 0.80
+        tp3 = tp1 + atr * 1.60
 
         note = (
             f"BUY bias mạnh. Final Score: {final_score}. "
             "Không BUY đuổi. Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
         )
 
-    # ======================
-    # BUY LIGHT
-    # ======================
     elif final_score >= 2:
         direction = "BUY"
 
         entry_low = price - atr * 0.60
         entry_high = price - atr * 0.25
 
-        sl = entry_low - atr * 0.80
+        sl = min(support - atr * 0.20, entry_low - atr * 0.60)
+
+        entry_mid = (entry_low + entry_high) / 2
+
+        tp1 = max(resistance, entry_mid + atr * 0.60)
+        tp2 = tp1 + atr * 0.70
+        tp3 = tp1 + atr * 1.30
 
         note = (
             f"BUY bias nhẹ. Final Score: {final_score}. "
@@ -1039,7 +1050,7 @@ def build_trade_plan(gold_trend, total_score):
         )
 
     # ======================
-    # SELL STRONG
+    # SELL
     # ======================
     elif final_score <= -5:
         direction = "SELL"
@@ -1047,7 +1058,6 @@ def build_trade_plan(gold_trend, total_score):
         entry_low = price + atr * 0.35
         entry_high = price + atr * 0.80
 
-        # Nếu fib vùng hồi tốt nằm trên giá, ưu tiên fib
         fib_low = min(fib500, fib618)
         fib_high = max(fib500, fib618)
 
@@ -1055,23 +1065,32 @@ def build_trade_plan(gold_trend, total_score):
             entry_low = min(entry_low, fib_low)
             entry_high = max(entry_high, fib_high)
 
-        sl = entry_high + atr * 0.90
+        sl = max(resistance + atr * 0.25, entry_high + atr * 0.70)
+
+        entry_mid = (entry_low + entry_high) / 2
+
+        tp1 = min(support, entry_mid - atr * 0.80)
+        tp2 = tp1 - atr * 0.80
+        tp3 = tp1 - atr * 1.60
 
         note = (
             f"SELL bias mạnh. Final Score: {final_score}. "
             "Không SELL đuổi. Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
         )
 
-    # ======================
-    # SELL LIGHT
-    # ======================
     elif final_score <= -2:
         direction = "SELL"
 
         entry_low = price + atr * 0.25
         entry_high = price + atr * 0.60
 
-        sl = entry_high + atr * 0.80
+        sl = max(resistance + atr * 0.20, entry_high + atr * 0.60)
+
+        entry_mid = (entry_low + entry_high) / 2
+
+        tp1 = min(support, entry_mid - atr * 0.60)
+        tp2 = tp1 - atr * 0.70
+        tp3 = tp1 - atr * 1.30
 
         note = (
             f"SELL bias nhẹ. Final Score: {final_score}. "
@@ -1096,11 +1115,13 @@ def build_trade_plan(gold_trend, total_score):
 
     entry_low = round(entry_low, 2)
     entry_high = round(entry_high, 2)
-    sl = round(sl, 2)
-
     entry_mid = round((entry_low + entry_high) / 2, 2)
 
-    # Status
+    sl = round(sl, 2)
+    tp1 = round(tp1, 2)
+    tp2 = round(tp2, 2)
+    tp3 = round(tp3, 2)
+
     if direction == "BUY":
         if entry_low <= price <= entry_high:
             status = "READY"
@@ -1109,10 +1130,6 @@ def build_trade_plan(gold_trend, total_score):
         else:
             status = "MISSED_ENTRY"
 
-        tp1 = entry_mid + atr * 0.80
-        tp2 = entry_mid + atr * 1.60
-        tp3 = entry_mid + atr * 2.60
-
     elif direction == "SELL":
         if entry_low <= price <= entry_high:
             status = "READY"
@@ -1120,14 +1137,6 @@ def build_trade_plan(gold_trend, total_score):
             status = "WAIT_PULLBACK"
         else:
             status = "MISSED_ENTRY"
-
-        tp1 = entry_mid - atr * 0.80
-        tp2 = entry_mid - atr * 1.60
-        tp3 = entry_mid - atr * 2.60
-
-    tp1 = round(tp1, 2)
-    tp2 = round(tp2, 2)
-    tp3 = round(tp3, 2)
 
     risk = abs(entry_mid - sl)
     reward = abs(tp3 - entry_mid)
