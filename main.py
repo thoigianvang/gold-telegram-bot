@@ -889,6 +889,42 @@ def get_momentum_score(gold_trend):
             "momentum": "ERROR",
             "momentum_note": str(e)
         }
+def score_to_probability(final_score):
+    if final_score >= 10:
+        return 90
+    elif final_score >= 8:
+        return 85
+    elif final_score >= 6:
+        return 78
+    elif final_score >= 4:
+        return 68
+    elif final_score >= 2:
+        return 58
+    elif final_score <= -10:
+        return 90
+    elif final_score <= -8:
+        return 85
+    elif final_score <= -6:
+        return 78
+    elif final_score <= -4:
+        return 68
+    elif final_score <= -2:
+        return 58
+    else:
+        return 50
+
+
+def probability_label(probability):
+    if probability >= 85:
+        return "VERY_HIGH"
+    elif probability >= 75:
+        return "HIGH"
+    elif probability >= 65:
+        return "MEDIUM"
+    elif probability >= 55:
+        return "LOW"
+    else:
+        return "WAIT"
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -898,17 +934,19 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
 
     trend = gold_trend.get("trend", "SIDEWAY")
     adx = float(gold_trend.get("adx", 0))
+    atr = float(gold_trend.get("atr", 0))
 
     ema_score = 0
     adx_score = 0
     fib_score = 0
     sr_score = 0
+    volatility_score = 0
 
-    # 1) EMA / Trend Score
+    # 1) Trend Score
     if trend == "STRONG_UPTREND":
-        ema_score = 3
+        ema_score = 4
     elif trend == "UPTREND":
-        ema_score = 2
+        ema_score = 3
     elif trend == "RECOVERY_BUT_WEAK":
         ema_score = 0
     elif trend == "SIDEWAY":
@@ -916,14 +954,13 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     elif trend == "PULLBACK_BUT_STILL_OK":
         ema_score = 0
     elif trend == "DOWNTREND":
-        ema_score = -2
-    elif trend == "STRONG_DOWNTREND":
         ema_score = -3
+    elif trend == "STRONG_DOWNTREND":
+        ema_score = -4
     else:
         ema_score = 0
 
-    # 2) ADX Score
-    # ADX không tự tạo hướng. Chỉ khuếch đại khi trend rõ.
+    # 2) ADX chỉ xác nhận hướng trend
     if adx >= 30:
         adx_power = 2
     elif adx >= 25:
@@ -938,14 +975,13 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     else:
         adx_score = 0
 
-    # 3) Fibonacci Score
+    # 3) Fibonacci
     if high > 0 and low > 0 and price > 0:
         fib = calculate_fibonacci(high, low)
         fib382 = fib["fib382"]
         fib500 = fib["fib500"]
         fib618 = fib["fib618"]
 
-        # Chỉ dùng Fibonacci để xác nhận xu hướng rõ
         if trend in ["STRONG_UPTREND", "UPTREND"]:
             if price >= fib382:
                 fib_score = 1
@@ -958,46 +994,48 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
             elif fib500 <= price <= fib382:
                 fib_score = -1
 
-        else:
-            fib_score = 0
-
-    # 4) Support / Resistance Score
+    # 4) Support / Resistance
     if price > 0 and support > 0 and resistance > 0:
         distance_to_support = abs(price - support)
         distance_to_resistance = abs(resistance - price)
 
-        # Uptrend: chỉ cộng BUY khi giá gần support hơn resistance
         if trend in ["STRONG_UPTREND", "UPTREND"]:
             if distance_to_support < distance_to_resistance:
                 sr_score = 2
-            else:
-                sr_score = 0
 
-        # Downtrend: chỉ cộng SELL khi giá gần resistance hơn support
         elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
             if distance_to_resistance < distance_to_support:
                 sr_score = -2
-            else:
-                sr_score = 0
 
+    # 5) Volatility Score
+    if atr > 0 and price > 0:
+        atr_pct = atr / price
+
+        if 0.002 <= atr_pct <= 0.007:
+            volatility_score = 1
+        elif atr_pct > 0.01:
+            volatility_score = -1
         else:
-            sr_score = 0
+            volatility_score = 0
 
-    # 5) External scores
+    # 6) Session + Momentum
+    session_data = get_session_score()
+    session_score = session_data["score"]
+
+    momentum_data = get_momentum_score(gold_trend)
+    momentum_score = int(momentum_data["momentum_score"])
+
+    # 7) External
     news_score = clamp_score(news_score, -3, 3)
     dollar_score = clamp_score(dollar_score, -2, 2)
     yield_score = clamp_score(yield_score, -2, 2)
-
-    session_data = get_session_score()
-    session_score = session_data["score"]
-    momentum_data = get_momentum_score(gold_trend)
-    momentum_score = momentum_data["momentum_score"]
 
     final_score = (
         ema_score
         + adx_score
         + fib_score
         + sr_score
+        + volatility_score
         + news_score
         + dollar_score
         + yield_score
@@ -1005,39 +1043,60 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + momentum_score
     )
 
-    final_score = clamp_score(final_score, -10, 10)
+    final_score = clamp_score(final_score, -12, 12)
+
+    probability = score_to_probability(final_score)
+    confidence = probability_label(probability)
 
     return {
         "trend_score": ema_score,
         "adx_score": adx_score,
         "fib_score": fib_score,
         "sr_score": sr_score,
+        "volatility_score": volatility_score,
         "news_score": news_score,
         "dollar_score": dollar_score,
         "yield_score": yield_score,
         "session": session_data["session"],
         "session_score": session_score,
         "session_note": session_data["note"],
-        "final_score": final_score,
         "momentum": momentum_data["momentum"],
         "momentum_score": momentum_score,
         "momentum_note": momentum_data["momentum_note"],
+        "final_score": final_score,
+        "probability": probability,
+        "confidence": confidence
     }
 def format_score_engine(score):
+
     msg = "🧠 SCORE ENGINE\n"
+
     msg += f"EMA Trend Score: {score.get('trend_score')}\n"
     msg += f"ADX Score: {score.get('adx_score')}\n"
     msg += f"Fibonacci Score: {score.get('fib_score')}\n"
     msg += f"Support/Resistance Score: {score.get('sr_score')}\n"
+    msg += f"Volatility Score: {score.get('volatility_score')}\n"
+
     msg += f"News Score: {score.get('news_score')}\n"
     msg += f"Dollar Score: {score.get('dollar_score')}\n"
     msg += f"Yield Score: {score.get('yield_score')}\n"
+
     msg += "--------------------\n"
+
     msg += f"Momentum: {score.get('momentum')}\n"
     msg += f"Momentum Score: {score.get('momentum_score')}\n"
-    msg += f"Final Score: {score.get('final_score')}\n"
+
     msg += f"Session: {score.get('session')}\n"
     msg += f"Session Score: {score.get('session_score')}\n"
+
+    msg += "--------------------\n"
+
+    msg += f"Probability: {score.get('probability')}%\n"
+    msg += f"Confidence: {score.get('confidence')}\n"
+
+    msg += "--------------------\n"
+
+    msg += f"Final Score: {score.get('final_score')}\n"
 
     return msg
 def find_swings(df):
