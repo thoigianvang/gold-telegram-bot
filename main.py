@@ -1296,12 +1296,12 @@ def apply_trade_filters(plan, gold_trend, score):
             f"SELL sát Support. Còn cách hỗ trợ {distance_to_support} giá."
         )
 
-     if direction == "BUY" and distance_to_resistance < 15:
+    if direction == "BUY" and distance_to_resistance < 15:
          block_reasons.append(
              f"Khoảng cách tới Resistance quá gần ({distance_to_resistance}). BUY không đáng RR."
         )
 
-     if direction == "SELL" and distance_to_support < 15:
+    if direction == "SELL" and distance_to_support < 15:
          block_reasons.append(
              f"Khoảng cách tới Support quá gần ({distance_to_support}). SELL không đáng RR."
          )
