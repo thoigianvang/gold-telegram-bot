@@ -10,6 +10,7 @@ from urllib.parse import quote_plus
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 MODE = os.getenv("MODE", "daily")
+TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY")
 BOT_VERSION = "V3.0 STABLE"
 CALENDAR_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
 STATE_FILE = "sent.json"
@@ -1715,6 +1716,7 @@ def manual_test(events, state):
      session_report(events, state, "TEST TREND")
      spot_price = get_gold_spot_price()
      send_telegram(f"🧪 GOLD US/OZ TEST\n\nPrice: {spot_price}")
+     send_telegram(f"🧪 TWELVE DATA KEY TEST\n\nKey exists: {bool(TWELVE_DATA_API_KEY)}")
 
      msg = "✅ BOT TEST OK\n\n"
 
