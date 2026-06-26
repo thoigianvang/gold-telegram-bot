@@ -734,55 +734,99 @@ def calculate_support_resistance(gold_trend):
         "status":"OK"
     }
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
-    trend = gold_trend.get("trend", "SIDEWAY")
     price = float(gold_trend.get("price", 0))
-    fib_score = 0
-    sr_score = 0
-
     high = float(gold_trend.get("high", 0))
     low = float(gold_trend.get("low", 0))
     support = float(gold_trend.get("support", 0))
     resistance = float(gold_trend.get("resistance", 0))
 
-    # 1) EMA Trend Score
+    trend = gold_trend.get("trend", "SIDEWAY")
     trend_score = int(gold_trend.get("trend_score", 0))
 
-    # 2) Fibonacci Score
+    adx = float(gold_trend.get("adx", 0))
+
+    fib_score = 0
+    sr_score = 0
+    adx_score = 0
+
+    # 1) EMA Trend Score
+    ema_score = trend_score
+
+    # 2) ADX chỉ xác nhận theo hướng EMA
+    if adx >= 30:
+        adx_power = 2
+    elif adx >= 25:
+        adx_power = 1
+    else:
+        adx_power = 0
+
+    if ema_score > 0:
+        adx_score = adx_power
+    elif ema_score < 0:
+        adx_score = -adx_power
+    else:
+        adx_score = 0
+
+    # 3) Fibonacci Score theo hướng trend
     if high > 0 and low > 0 and price > 0:
         fib = calculate_fibonacci(high, low)
         fib382 = fib["fib382"]
         fib500 = fib["fib500"]
         fib618 = fib["fib618"]
 
-        if price < fib618:
-            fib_score = -1
-        elif price > fib382:
-            fib_score = 1
-        else:
-            fib_score = 0
+        if ema_score < 0:
+            # Downtrend: giá dưới Fib 61.8 hoặc quanh Fib 50/61.8 = ưu tiên SELL
+            if price <= fib618:
+                fib_score = -1
+            elif fib500 <= price <= fib382:
+                fib_score = -1
 
-    # 3) Support / Resistance Score
+        elif ema_score > 0:
+            # Uptrend: giá trên Fib 38.2 hoặc quanh Fib 38.2/50 = ưu tiên BUY
+            if price >= fib382:
+                fib_score = 1
+            elif fib382 <= price <= fib500:
+                fib_score = 1
+
+    # 4) Support / Resistance Score theo hướng trend
     if price > 0 and support > 0 and resistance > 0:
         distance_to_support = abs(price - support)
         distance_to_resistance = abs(resistance - price)
 
-        if distance_to_resistance < distance_to_support:
-            sr_score = -1
-        elif distance_to_support < distance_to_resistance:
-            sr_score = 1
-        else:
-            sr_score = 0
+        # Downtrend: gần resistance mới có giá trị SELL
+        if ema_score < 0:
+            if distance_to_resistance < distance_to_support:
+                sr_score = -2
+            else:
+                sr_score = 0
 
-    # 4) Clamp điểm bên ngoài
-    news_score = clamp_score(news_score, -2, 2)
+        # Uptrend: gần support mới có giá trị BUY
+        elif ema_score > 0:
+            if distance_to_support < distance_to_resistance:
+                sr_score = 2
+            else:
+                sr_score = 0
+
+    # 5) Clamp điểm bên ngoài
+    news_score = clamp_score(news_score, -3, 3)
     dollar_score = clamp_score(dollar_score, -2, 2)
     yield_score = clamp_score(yield_score, -2, 2)
 
-    final_score = trend_score + fib_score + sr_score + news_score + dollar_score + yield_score
+    final_score = (
+        ema_score
+        + adx_score
+        + fib_score
+        + sr_score
+        + news_score
+        + dollar_score
+        + yield_score
+    )
+
     final_score = clamp_score(final_score, -10, 10)
 
     return {
-        "trend_score": trend_score,
+        "trend_score": ema_score,
+        "adx_score": adx_score,
         "fib_score": fib_score,
         "sr_score": sr_score,
         "news_score": news_score,
@@ -793,6 +837,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
 def format_score_engine(score):
     msg = "🧠 SCORE ENGINE\n"
     msg += f"EMA Trend Score: {score.get('trend_score')}\n"
+    msg += f"ADX Score: {score.get('adx_score')}\n"
     msg += f"Fibonacci Score: {score.get('fib_score')}\n"
     msg += f"Support/Resistance Score: {score.get('sr_score')}\n"
     msg += f"News Score: {score.get('news_score')}\n"
@@ -825,6 +870,74 @@ def find_swings(df):
     support = float(recent_lows.min())
 
     return support, resistance
+def calculate_score_engine(gold):
+    score = 0
+
+    detail = {}
+
+    # EMA
+    ema_score = gold.get("trend_score", 0)
+    score += ema_score
+    detail["ema"] = ema_score
+
+    # ADX
+    adx = gold.get("adx", 0)
+
+    if adx >= 30:
+        adx_score = 2
+    elif adx >= 25:
+        adx_score = 1
+    else:
+        adx_score = 0
+
+    if ema_score < 0:
+        score -= adx_score
+        detail["adx"] = -adx_score
+
+    elif ema_score > 0:
+        score += adx_score
+        detail["adx"] = adx_score
+
+    else:
+        detail["adx"] = 0
+
+    # Fibonacci
+    fib50 = gold.get("fib50", 0)
+    price = gold.get("price", 0)
+
+    fib_score = 0
+
+    if abs(price - fib50) < 5:
+        if ema_score > 0:
+            fib_score = 1
+        elif ema_score < 0:
+            fib_score = -1
+
+    score += fib_score
+    detail["fib"] = fib_score
+
+    # Support Resistance
+    sr_score = 0
+
+    support = gold.get("support", 0)
+    resistance = gold.get("resistance", 0)
+
+    if ema_score > 0:
+
+        if abs(price-support) < 5:
+            sr_score = 2
+
+    elif ema_score < 0:
+
+        if abs(price-resistance) < 5:
+            sr_score = -2
+
+    score += sr_score
+    detail["sr"] = sr_score
+
+    detail["total"] = score
+
+    return detail
 def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
