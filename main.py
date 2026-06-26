@@ -1404,7 +1404,83 @@ def build_trade_plan(gold_trend, total_score):
         "rr": rr,
         "note": note
     }
-def format_trade_plan(gold_trend, plan):
+def analyze_trade_context(gold_trend, plan, score):
+    reasons = []
+    actions = []
+
+    direction = plan.get("direction", "WAIT")
+    status = plan.get("status", "WAIT")
+
+    trend = gold_trend.get("trend", "SIDEWAY")
+    adx = float(gold_trend.get("adx", 0))
+    momentum = score.get("momentum", "NEUTRAL")
+    probability = int(score.get("probability", 50))
+    final_score = int(score.get("final_score", 0))
+    session = score.get("session", "UNKNOWN")
+
+    if adx < 25:
+        reasons.append("ADX dưới 25: xu hướng chưa đủ mạnh.")
+    elif adx >= 30:
+        reasons.append("ADX mạnh: thị trường có lực chạy.")
+
+    if trend in ["RECOVERY_BUT_WEAK", "PULLBACK_BUT_STILL_OK", "SIDEWAY"]:
+        reasons.append(f"Trend chưa rõ: {trend}.")
+
+    if direction == "BUY" and momentum == "BEARISH":
+        reasons.append("Momentum đang BEARISH, xung đột với BUY.")
+    elif direction == "SELL" and momentum == "BULLISH":
+        reasons.append("Momentum đang BULLISH, xung đột với SELL.")
+
+    if status == "WAIT":
+        actions.append("Không vào lệnh.")
+        actions.append("Chờ tín hiệu rõ hơn.")
+    elif status == "WAIT_PULLBACK":
+        actions.append("Chờ giá hồi về Entry Zone.")
+        actions.append("Không FOMO, không vào đuổi.")
+    elif status == "READY":
+        actions.append("Chờ nến xác nhận tại Entry Zone.")
+        actions.append("Kiểm tra spread trước khi vào.")
+    elif status == "MISSED_ENTRY":
+        actions.append("Bỏ qua lệnh này.")
+        actions.append("Chờ setup mới.")
+
+    if session == "LOW_LIQUIDITY":
+        reasons.append("Thanh khoản thấp, không phù hợp intraday.")
+        actions.append("Tránh mở lệnh mới.")
+
+    if probability >= 85:
+        entry_quality = "A+"
+    elif probability >= 75:
+        entry_quality = "A"
+    elif probability >= 65:
+        entry_quality = "B"
+    elif probability >= 55:
+        entry_quality = "C"
+    else:
+        entry_quality = "NO_TRADE"
+
+    if abs(final_score) >= 8:
+        risk_level = "MEDIUM"
+    elif abs(final_score) >= 5:
+        risk_level = "LOW_MEDIUM"
+    else:
+        risk_level = "LOW"
+
+    if status == "WAIT":
+        hold_time = "-"
+    elif abs(final_score) >= 8:
+        hold_time = "30–120 phút"
+    else:
+        hold_time = "15–60 phút"
+
+    return {
+        "reasons": reasons,
+        "actions": actions,
+        "entry_quality": entry_quality,
+        "risk_level": risk_level,
+        "hold_time": hold_time
+    }
+def format_trade_plan(gold_trend, plan, score=None):
     price = gold_trend.get("price", "-")
     open_price = gold_trend.get("open", "-")
     high = gold_trend.get("high", "-")
@@ -1426,7 +1502,7 @@ def format_trade_plan(gold_trend, plan):
     else:
         icon = "⚪"
 
-    msg = "📊 XAU/USD TRADE PLAN V4\n\n"
+    msg = "📊 XAU/USD TRADE PLAN V11\n\n"
 
     msg += "🥇 GOLD US$/OZ\n"
     msg += f"Price: {price}\n"
@@ -1469,7 +1545,29 @@ def format_trade_plan(gold_trend, plan):
     msg += "📝 NOTE\n"
     msg += f"{plan.get('note')}\n\n"
 
-    msg += "⚠️ Đây là kế hoạch theo mô hình bias, không phải lệnh vào trực tiếp."
+    if score is not None:
+        context = analyze_trade_context(gold_trend, plan, score)
+
+        msg += "\n🧭 V11 DECISION CONTEXT\n"
+        msg += f"Entry Quality: {context['entry_quality']}\n"
+        msg += f"Risk Level: {context['risk_level']}\n"
+        msg += f"Expected Hold Time: {context['hold_time']}\n"
+
+        msg += "\n📌 Reason\n"
+        if context["reasons"]:
+            for reason in context["reasons"]:
+                msg += f"• {reason}\n"
+        else:
+            msg += "• Tín hiệu không có xung đột lớn.\n"
+
+        msg += "\n✅ Next Action\n"
+        if context["actions"]:
+            for action in context["actions"]:
+                msg += f"• {action}\n"
+        else:
+            msg += "• Chờ nến xác nhận.\n"
+
+    msg += "\n⚠️ Đây là kế hoạch theo mô hình bias, không phải lệnh vào trực tiếp."
     msg += "\nChỉ vào lệnh khi có nến xác nhận và spread ổn."
 
     return msg
@@ -2724,7 +2822,7 @@ def manual_test(events, state):
 
     plan = build_trade_plan(gold_trend, score["final_score"])
 
-    trade_msg = format_trade_plan(gold_trend, plan)
+    trade_msg = format_trade_plan(gold_trend, plan, score)
     score_msg = format_score_engine(score)
 
     send_telegram(trade_msg + "\n\n" + score_msg)
