@@ -1076,6 +1076,9 @@ def format_trade_plan(gold_trend, plan):
     change_pct = gold_trend.get("change_pct", "-")
     trend = gold_trend.get("trend", "-")
     source = gold_trend.get("source", "-")
+    adx = gold_trend.get("adx", "-")
+    atr = gold_trend.get("atr", "-")
+    trend_strength = gold_trend.get("trend_strength", "-")
 
     direction = plan.get("direction", "WAIT")
 
@@ -1107,6 +1110,9 @@ def format_trade_plan(gold_trend, plan):
     msg += f"Mid: {sr['mid']}\n"
     msg += f"Change: {change_pct}%\n"
     msg += f"Trend: {trend}\n"
+    msg += f"ADX: {adx}\n"
+    msg += f"ATR: {atr}\n"
+    msg += f"Trend Strength: {trend_strength}\n"
     msg += f"Source: {source}\n\n"
 
     msg += "🎯 PLAN\n"
