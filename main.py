@@ -981,8 +981,9 @@ def build_trade_plan(gold_trend, total_score):
         }
 
     fib = calculate_fibonacci(high, low)
-    fib500 = fib["fib500"]
-    fib618 = fib["fib618"]
+    fib382 = float(fib["fib382"])
+    fib500 = float(fib["fib500"])
+    fib618 = float(fib["fib618"])
 
     sr = calculate_support_resistance(gold_trend)
     support = float(sr.get("support", low))
@@ -992,7 +993,7 @@ def build_trade_plan(gold_trend, total_score):
         day_range = high - low
         if day_range <= 0:
             day_range = price * 0.003
-        atr = max(day_range * 0.35, price * 0.002)
+        atr = max(day_range * 0.25, price * 0.0015)
 
     final_score = total_score
 
@@ -1002,99 +1003,113 @@ def build_trade_plan(gold_trend, total_score):
         final_score = max(final_score, 5)
 
     # ======================
-    # BUY
+    # BUY INTRADAY
     # ======================
     if final_score >= 5:
         direction = "BUY"
 
-        entry_low = price - atr * 0.80
-        entry_high = price - atr * 0.35
+        entry_low = price - atr * 0.45
+        entry_high = price - atr * 0.20
 
-        fib_low = min(fib618, fib500)
-        fib_high = max(fib618, fib500)
+        if fib618 < price:
+            entry_low = min(entry_low, fib618)
+        if fib500 < price:
+            entry_high = max(entry_high, fib500)
 
-        if fib_high < price:
-            entry_low = min(entry_low, fib_low)
-            entry_high = max(entry_high, fib_high)
+        entry_width = entry_high - entry_low
+        max_width = atr * 0.35
 
-        sl = min(support - atr * 0.25, entry_low - atr * 0.70)
+        if entry_width > max_width:
+            entry_mid_temp = (entry_low + entry_high) / 2
+            entry_low = entry_mid_temp - max_width / 2
+            entry_high = entry_mid_temp + max_width / 2
 
         entry_mid = (entry_low + entry_high) / 2
 
-        tp1 = max(resistance, entry_mid + atr * 0.80)
-        tp2 = tp1 + atr * 0.80
-        tp3 = tp1 + atr * 1.60
+        sl = min(support - atr * 0.15, entry_low - atr * 0.45)
+
+        tp1 = entry_mid + atr * 0.55
+        tp2 = min(resistance, entry_mid + atr * 1.00)
+        tp3 = min(resistance + atr * 0.35, entry_mid + atr * 1.45)
 
         note = (
-            f"BUY bias mạnh. Final Score: {final_score}. "
-            "Không BUY đuổi. Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
+            f"BUY intraday mạnh. Final Score: {final_score}. "
+            "Không BUY đuổi. Chỉ BUY khi giá hồi về entry, có nến xác nhận. "
+            "Không giữ lệnh qua đêm."
         )
 
     elif final_score >= 2:
         direction = "BUY"
 
-        entry_low = price - atr * 0.60
-        entry_high = price - atr * 0.25
-
-        sl = min(support - atr * 0.20, entry_low - atr * 0.60)
+        entry_low = price - atr * 0.35
+        entry_high = price - atr * 0.15
 
         entry_mid = (entry_low + entry_high) / 2
 
-        tp1 = max(resistance, entry_mid + atr * 0.60)
-        tp2 = tp1 + atr * 0.70
-        tp3 = tp1 + atr * 1.30
+        sl = min(support - atr * 0.10, entry_low - atr * 0.40)
+
+        tp1 = entry_mid + atr * 0.45
+        tp2 = min(resistance, entry_mid + atr * 0.80)
+        tp3 = min(resistance + atr * 0.20, entry_mid + atr * 1.15)
 
         note = (
-            f"BUY bias nhẹ. Final Score: {final_score}. "
-            "Không BUY đuổi. Chỉ BUY khi giá hồi xuống và có nến xác nhận."
+            f"BUY intraday nhẹ. Final Score: {final_score}. "
+            "Chỉ BUY khi hồi xuống entry và có nến xác nhận. Không giữ qua đêm."
         )
 
     # ======================
-    # SELL
+    # SELL INTRADAY
     # ======================
     elif final_score <= -5:
         direction = "SELL"
 
-        entry_low = price + atr * 0.35
-        entry_high = price + atr * 0.80
+        entry_low = price + atr * 0.20
+        entry_high = price + atr * 0.45
 
-        fib_low = min(fib500, fib618)
-        fib_high = max(fib500, fib618)
+        if fib618 > price:
+            entry_low = min(entry_low, fib618)
+        if fib500 > price:
+            entry_high = max(entry_high, fib500)
 
-        if fib_low > price:
-            entry_low = min(entry_low, fib_low)
-            entry_high = max(entry_high, fib_high)
+        entry_width = entry_high - entry_low
+        max_width = atr * 0.35
 
-        sl = max(resistance + atr * 0.25, entry_high + atr * 0.70)
+        if entry_width > max_width:
+            entry_mid_temp = (entry_low + entry_high) / 2
+            entry_low = entry_mid_temp - max_width / 2
+            entry_high = entry_mid_temp + max_width / 2
 
         entry_mid = (entry_low + entry_high) / 2
 
-        tp1 = min(support, entry_mid - atr * 0.80)
-        tp2 = tp1 - atr * 0.80
-        tp3 = tp1 - atr * 1.60
+        sl = max(resistance + atr * 0.15, entry_high + atr * 0.45)
+
+        tp1 = entry_mid - atr * 0.55
+        tp2 = max(support, entry_mid - atr * 1.00)
+        tp3 = max(support - atr * 0.35, entry_mid - atr * 1.45)
 
         note = (
-            f"SELL bias mạnh. Final Score: {final_score}. "
-            "Không SELL đuổi. Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
+            f"SELL intraday mạnh. Final Score: {final_score}. "
+            "Không SELL đuổi. Chỉ SELL khi giá hồi lên entry, có nến xác nhận. "
+            "Không giữ lệnh qua đêm."
         )
 
     elif final_score <= -2:
         direction = "SELL"
 
-        entry_low = price + atr * 0.25
-        entry_high = price + atr * 0.60
-
-        sl = max(resistance + atr * 0.20, entry_high + atr * 0.60)
+        entry_low = price + atr * 0.15
+        entry_high = price + atr * 0.35
 
         entry_mid = (entry_low + entry_high) / 2
 
-        tp1 = min(support, entry_mid - atr * 0.60)
-        tp2 = tp1 - atr * 0.70
-        tp3 = tp1 - atr * 1.30
+        sl = max(resistance + atr * 0.10, entry_high + atr * 0.40)
+
+        tp1 = entry_mid - atr * 0.45
+        tp2 = max(support, entry_mid - atr * 0.80)
+        tp3 = max(support - atr * 0.20, entry_mid - atr * 1.15)
 
         note = (
-            f"SELL bias nhẹ. Final Score: {final_score}. "
-            "Không SELL đuổi. Chỉ SELL khi giá hồi lên và có nến xác nhận."
+            f"SELL intraday nhẹ. Final Score: {final_score}. "
+            "Chỉ SELL khi hồi lên entry và có nến xác nhận. Không giữ qua đêm."
         )
 
     else:
@@ -1109,7 +1124,7 @@ def build_trade_plan(gold_trend, total_score):
             "rr": "-",
             "note": (
                 f"WAIT. Final Score: {final_score}. "
-                "Điểm chưa đủ mạnh hoặc tín hiệu đang xung đột."
+                "Điểm chưa đủ mạnh hoặc tín hiệu xung đột. Không vào lệnh."
             )
         }
 
