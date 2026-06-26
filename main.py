@@ -726,6 +726,8 @@ def build_trade_plan(gold_trend, total_score):
     high = float(gold_trend.get("high", 0))
     low = float(gold_trend.get("low", 0))
     change_pct = float(gold_trend.get("change_pct", 0))
+    trend = gold_trend.get("trend", "SIDEWAY")
+    trend_score = int(gold_trend.get("trend_score", 0))
 
     if price <= 0:
         return {
@@ -746,7 +748,16 @@ def build_trade_plan(gold_trend, total_score):
 
     atr_like = max(day_range, price * 0.002)
 
-    if total_score >= 5:
+    final_score = total_score + trend_score
+
+    # Khóa hướng theo trend mạnh
+    if trend == "STRONG_DOWNTREND":
+        final_score = min(final_score, -5)
+
+    elif trend == "STRONG_UPTREND":
+        final_score = max(final_score, 5)
+
+    if final_score >= 5:
         direction = "BUY"
         entry_low = price - atr_like * 0.35
         entry_high = price - atr_like * 0.15
@@ -754,9 +765,12 @@ def build_trade_plan(gold_trend, total_score):
         tp1 = price + atr_like * 0.6
         tp2 = price + atr_like * 1.1
         tp3 = price + atr_like * 1.8
-        note = "BUY bias mạnh. Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
+        note = (
+            f"BUY bias mạnh. Final Score: {final_score}. "
+            "Chỉ BUY khi giá hồi về vùng entry và có nến xác nhận."
+        )
 
-    elif total_score >= 2:
+    elif final_score >= 2:
         direction = "BUY"
         entry_low = price - atr_like * 0.25
         entry_high = price - atr_like * 0.10
@@ -764,9 +778,12 @@ def build_trade_plan(gold_trend, total_score):
         tp1 = price + atr_like * 0.45
         tp2 = price + atr_like * 0.9
         tp3 = price + atr_like * 1.4
-        note = "BUY bias nhẹ. Không BUY đuổi."
+        note = (
+            f"BUY bias nhẹ. Final Score: {final_score}. "
+            "Không BUY đuổi. Chỉ BUY khi có nến xác nhận."
+        )
 
-    elif total_score <= -5:
+    elif final_score <= -5:
         direction = "SELL"
         entry_low = price + atr_like * 0.15
         entry_high = price + atr_like * 0.35
@@ -774,9 +791,12 @@ def build_trade_plan(gold_trend, total_score):
         tp1 = price - atr_like * 0.6
         tp2 = price - atr_like * 1.1
         tp3 = price - atr_like * 1.8
-        note = "SELL bias mạnh. Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
+        note = (
+            f"SELL bias mạnh. Final Score: {final_score}. "
+            "Chỉ SELL khi giá hồi lên vùng entry và có nến xác nhận."
+        )
 
-    elif total_score <= -2:
+    elif final_score <= -2:
         direction = "SELL"
         entry_low = price + atr_like * 0.10
         entry_high = price + atr_like * 0.25
@@ -784,7 +804,10 @@ def build_trade_plan(gold_trend, total_score):
         tp1 = price - atr_like * 0.45
         tp2 = price - atr_like * 0.9
         tp3 = price - atr_like * 1.4
-        note = "SELL bias nhẹ. Không SELL đuổi."
+        note = (
+            f"SELL bias nhẹ. Final Score: {final_score}. "
+            "Không SELL đuổi. Chỉ SELL khi có nến xác nhận."
+        )
 
     else:
         return {
@@ -795,7 +818,10 @@ def build_trade_plan(gold_trend, total_score):
             "tp2": "-",
             "tp3": "-",
             "rr": "-",
-            "note": "Điểm chưa đủ mạnh. Không vào lệnh."
+            "note": (
+                f"WAIT. Final Score: {final_score}. "
+                "Điểm chưa đủ mạnh hoặc tín hiệu đang xung đột."
+            )
         }
 
     risk = abs(((entry_low + entry_high) / 2) - sl)
