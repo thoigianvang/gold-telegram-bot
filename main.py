@@ -1414,7 +1414,6 @@ def calculate_fibonacci(high, low):
     }
 def get_gold_trend_signal():
     try:
-        # 1) Lấy giá Spot Gold US$/oz từ TwelveData
         gold = get_gold_ohlc()
 
         if not gold:
@@ -1432,6 +1431,9 @@ def get_gold_trend_signal():
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
+                "atr": 0,
+                "adx": 0,
+                "trend_strength": "NO_DATA",
                 "trend": "NO_SPOT_DATA",
                 "trend_score": -1
             }
@@ -1442,8 +1444,8 @@ def get_gold_trend_signal():
         low = float(gold.get("low", 0))
         change_pct = float(gold.get("change_pct", 0))
 
-        # 2) Tạm dùng Yahoo chỉ để lấy dữ liệu lịch sử tính EMA + Swing S/R
         import yfinance as yf
+        import pandas as pd
 
         symbols = ["XAUUSD=X", "GC=F"]
         df = None
@@ -1482,16 +1484,27 @@ def get_gold_trend_signal():
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
+                "atr": 0,
+                "adx": 0,
+                "trend_strength": "NO_HISTORY_DATA",
                 "trend": "NO_HISTORY_DATA",
                 "trend_score": 0
             }
 
         close = df["Close"]
+        hist_high = df["High"]
+        hist_low = df["Low"]
 
         if hasattr(close, "columns"):
             close = close.iloc[:, 0]
+        if hasattr(hist_high, "columns"):
+            hist_high = hist_high.iloc[:, 0]
+        if hasattr(hist_low, "columns"):
+            hist_low = hist_low.iloc[:, 0]
 
         close = close.dropna()
+        hist_high = hist_high.dropna()
+        hist_low = hist_low.dropna()
 
         if len(close) < 200:
             return {
@@ -1508,22 +1521,68 @@ def get_gold_trend_signal():
                 "ema20": 0,
                 "ema50": 0,
                 "ema200": 0,
+                "atr": 0,
+                "adx": 0,
+                "trend_strength": "NOT_ENOUGH_HISTORY",
                 "trend": "NOT_ENOUGH_HISTORY",
                 "trend_score": 0
             }
 
-        # 3) Tính EMA từ lịch sử, nhưng dùng giá spot hiện tại để so với EMA
         ema20 = float(close.ewm(span=20, adjust=False).mean().iloc[-1])
         ema50 = float(close.ewm(span=50, adjust=False).mean().iloc[-1])
         ema200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1])
 
-        # 4) Tính Swing Support / Resistance từ 120 nến gần nhất
         try:
             support, resistance = find_swings(df)
         except Exception as sr_error:
             print("SWING SR ERROR:", str(sr_error))
             support = low
             resistance = high
+
+        # ATR + ADX
+        try:
+            plus_dm = hist_high.diff()
+            minus_dm = -hist_low.diff()
+
+            plus_dm = plus_dm.where(
+                (plus_dm > minus_dm) & (plus_dm > 0),
+                0
+            )
+
+            minus_dm = minus_dm.where(
+                (minus_dm > plus_dm) & (minus_dm > 0),
+                0
+            )
+
+            tr1 = hist_high - hist_low
+            tr2 = (hist_high - close.shift()).abs()
+            tr3 = (hist_low - close.shift()).abs()
+
+            tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+            atr_series = tr.rolling(14).mean()
+            atr = float(atr_series.iloc[-1])
+
+            plus_di = 100 * (plus_dm.rolling(14).sum() / atr_series)
+            minus_di = 100 * (minus_dm.rolling(14).sum() / atr_series)
+
+            dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
+            adx = float(dx.rolling(14).mean().iloc[-1])
+
+            if adx >= 30:
+                trend_strength = "VERY_STRONG"
+            elif adx >= 25:
+                trend_strength = "STRONG"
+            elif adx >= 20:
+                trend_strength = "WEAK"
+            else:
+                trend_strength = "SIDEWAY"
+
+        except Exception as adx_error:
+            print("ADX ATR ERROR:", str(adx_error))
+            atr = 0
+            adx = 0
+            trend_strength = "ADX_ERROR"
 
         price = spot_price
 
@@ -1569,6 +1628,9 @@ def get_gold_trend_signal():
             "ema20": round(ema20, 2),
             "ema50": round(ema50, 2),
             "ema200": round(ema200, 2),
+            "atr": round(atr, 2),
+            "adx": round(adx, 2),
+            "trend_strength": trend_strength,
             "trend": trend,
             "trend_score": trend_score
         }
@@ -1590,6 +1652,9 @@ def get_gold_trend_signal():
             "ema20": 0,
             "ema50": 0,
             "ema200": 0,
+            "atr": 0,
+            "adx": 0,
+            "trend_strength": "ERROR",
             "trend": "ERROR",
             "trend_score": -1
         }
