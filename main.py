@@ -1114,6 +1114,9 @@ def format_score_engine(score):
     msg += f"News Score: {score.get('news_score')}\n"
     msg += f"Dollar Score: {score.get('dollar_score')}\n"
     msg += f"Yield Score: {score.get('yield_score')}\n"
+    msg += f"Price Location: {score.get('price_location')}\n"
+    msg += f"Location Score: {score.get('location_score')}\n"
+    msg += "--------------------\n"
 
     msg += "--------------------\n"
 
