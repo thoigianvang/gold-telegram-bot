@@ -935,36 +935,47 @@ def evaluate_price_location(gold_trend):
     if price <= 0 or support <= 0 or resistance <= 0 or width <= 0:
         return {
             "location": "UNKNOWN",
-            "score": 0
+            "score": 0,
+            "distance_to_support": 0,
+            "distance_to_resistance": 0,
+            "breakout_risk": "UNKNOWN"
         }
+
+    distance_to_support = round(abs(price - support), 2)
+    distance_to_resistance = round(abs(resistance - price), 2)
 
     pos = (price - support) / width
 
     if pos < 0.2:
-        return {
-            "location": "NEAR_SUPPORT",
-            "score": 2
-        }
+        location = "NEAR_SUPPORT"
+        score = 2
     elif pos < 0.4:
-        return {
-            "location": "LOW_RANGE",
-            "score": 1
-        }
+        location = "LOW_RANGE"
+        score = 1
     elif pos < 0.6:
-        return {
-            "location": "MIDDLE",
-            "score": 0
-        }
+        location = "MIDDLE"
+        score = 0
     elif pos < 0.8:
-        return {
-            "location": "HIGH_RANGE",
-            "score": -1
-        }
+        location = "HIGH_RANGE"
+        score = -1
     else:
-        return {
-            "location": "NEAR_RESISTANCE",
-            "score": -2
-        }
+        location = "NEAR_RESISTANCE"
+        score = -2
+
+    if distance_to_resistance <= 10:
+        breakout_risk = "HIGH"
+    elif distance_to_resistance <= 20:
+        breakout_risk = "MEDIUM"
+    else:
+        breakout_risk = "LOW"
+
+    return {
+        "location": location,
+        "score": score,
+        "distance_to_support": distance_to_support,
+        "distance_to_resistance": distance_to_resistance,
+        "breakout_risk": breakout_risk
+    }
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -1097,6 +1108,9 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "momentum_note": momentum_data["momentum_note"],
         "price_location": location["location"],
         "location_score": location_score,
+        "distance_to_support": location["distance_to_support"],
+        "distance_to_resistance": location["distance_to_resistance"],
+        "breakout_risk": location["breakout_risk"],
         "final_score": final_score,
         "probability": probability,
         "confidence": confidence
@@ -1116,7 +1130,9 @@ def format_score_engine(score):
     msg += f"Yield Score: {score.get('yield_score')}\n"
     msg += f"Price Location: {score.get('price_location')}\n"
     msg += f"Location Score: {score.get('location_score')}\n"
-    msg += "--------------------\n"
+    msg += f"Distance To Support: {score.get('distance_to_support')}\n"
+    msg += f"Distance To Resistance: {score.get('distance_to_resistance')}\n"
+    msg += f"Breakout Risk: {score.get('breakout_risk')}\n"
 
     msg += "--------------------\n"
 
@@ -1245,7 +1261,9 @@ def apply_trade_filters(plan, gold_trend, score):
     probability = int(score.get("probability", 50))
     momentum = score.get("momentum", "NEUTRAL")
     session = score.get("session", "UNKNOWN")
-
+    price_location = score.get("price_location", "UNKNOWN")
+    distance_to_resistance = float(score.get("distance_to_resistance", 999))
+    distance_to_support = float(score.get("distance_to_support", 999))
     block_reasons = []
 
     if rr_value < 1.5:
@@ -1268,7 +1286,25 @@ def apply_trade_filters(plan, gold_trend, score):
 
     if trend in ["SIDEWAY", "RECOVERY_BUT_WEAK", "PULLBACK_BUT_STILL_OK"] and probability < 75:
         block_reasons.append(f"Trend chưa rõ ({trend}) và Probability chưa đủ cao.")
+    if direction == "BUY" and price_location == "NEAR_RESISTANCE":
+        block_reasons.append(
+            f"BUY sát Resistance. Còn cách kháng cự {distance_to_resistance} giá."
+        )
 
+    if direction == "SELL" and price_location == "NEAR_SUPPORT":
+        block_reasons.append(
+            f"SELL sát Support. Còn cách hỗ trợ {distance_to_support} giá."
+        )
+
+     if direction == "BUY" and distance_to_resistance < 15:
+         block_reasons.append(
+             f"Khoảng cách tới Resistance quá gần ({distance_to_resistance}). BUY không đáng RR."
+        )
+
+     if direction == "SELL" and distance_to_support < 15:
+         block_reasons.append(
+             f"Khoảng cách tới Support quá gần ({distance_to_support}). SELL không đáng RR."
+         )
     if block_reasons:
         return {
             "status": "NO_TRADE",
