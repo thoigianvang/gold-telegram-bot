@@ -925,6 +925,46 @@ def probability_label(probability):
         return "LOW"
     else:
         return "WAIT"
+def evaluate_price_location(gold_trend):
+    price = float(gold_trend.get("price", 0))
+    support = float(gold_trend.get("support", 0))
+    resistance = float(gold_trend.get("resistance", 0))
+
+    width = resistance - support
+
+    if price <= 0 or support <= 0 or resistance <= 0 or width <= 0:
+        return {
+            "location": "UNKNOWN",
+            "score": 0
+        }
+
+    pos = (price - support) / width
+
+    if pos < 0.2:
+        return {
+            "location": "NEAR_SUPPORT",
+            "score": 2
+        }
+    elif pos < 0.4:
+        return {
+            "location": "LOW_RANGE",
+            "score": 1
+        }
+    elif pos < 0.6:
+        return {
+            "location": "MIDDLE",
+            "score": 0
+        }
+    elif pos < 0.8:
+        return {
+            "location": "HIGH_RANGE",
+            "score": -1
+        }
+    else:
+        return {
+            "location": "NEAR_RESISTANCE",
+            "score": -2
+        }
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -947,12 +987,6 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         ema_score = 4
     elif trend == "UPTREND":
         ema_score = 3
-    elif trend == "RECOVERY_BUT_WEAK":
-        ema_score = 0
-    elif trend == "SIDEWAY":
-        ema_score = 0
-    elif trend == "PULLBACK_BUT_STILL_OK":
-        ema_score = 0
     elif trend == "DOWNTREND":
         ema_score = -3
     elif trend == "STRONG_DOWNTREND":
@@ -983,15 +1017,11 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         fib618 = fib["fib618"]
 
         if trend in ["STRONG_UPTREND", "UPTREND"]:
-            if price >= fib382:
-                fib_score = 1
-            elif fib500 <= price <= fib382:
+            if price >= fib382 or fib500 <= price <= fib382:
                 fib_score = 1
 
         elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
-            if price <= fib618:
-                fib_score = -1
-            elif fib500 <= price <= fib382:
+            if price <= fib618 or fib500 <= price <= fib382:
                 fib_score = -1
 
     # 4) Support / Resistance
@@ -1015,15 +1045,16 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
             volatility_score = 1
         elif atr_pct > 0.01:
             volatility_score = -1
-        else:
-            volatility_score = 0
 
-    # 6) Session + Momentum
+    # 6) Session + Momentum + Location
     session_data = get_session_score()
     session_score = session_data["score"]
 
     momentum_data = get_momentum_score(gold_trend)
     momentum_score = int(momentum_data["momentum_score"])
+
+    location = evaluate_price_location(gold_trend)
+    location_score = int(location["score"])
 
     # 7) External
     news_score = clamp_score(news_score, -3, 3)
@@ -1041,6 +1072,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + yield_score
         + session_score
         + momentum_score
+        + location_score
     )
 
     final_score = clamp_score(final_score, -12, 12)
@@ -1063,6 +1095,8 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "momentum": momentum_data["momentum"],
         "momentum_score": momentum_score,
         "momentum_note": momentum_data["momentum_note"],
+        "price_location": location["location"],
+        "location_score": location_score,
         "final_score": final_score,
         "probability": probability,
         "confidence": confidence
