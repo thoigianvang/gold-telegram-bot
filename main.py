@@ -1552,6 +1552,10 @@ def get_gold_trend_signal():
                 "ema200": 0,
                 "atr": 0,
                 "adx": 0,
+                "rsi": 0,
+                "macd": 0,
+                "macd_signal": 0,
+                "macd_hist": 0,
                 "trend_strength": "NO_DATA",
                 "trend": "NO_SPOT_DATA",
                 "trend_score": -1
@@ -1605,6 +1609,10 @@ def get_gold_trend_signal():
                 "ema200": 0,
                 "atr": 0,
                 "adx": 0,
+                "rsi": 0,
+                "macd": 0,
+                "macd_signal": 0,
+                "macd_hist": 0,
                 "trend_strength": "NO_HISTORY_DATA",
                 "trend": "NO_HISTORY_DATA",
                 "trend_score": 0
@@ -1642,6 +1650,10 @@ def get_gold_trend_signal():
                 "ema200": 0,
                 "atr": 0,
                 "adx": 0,
+                "rsi": 0,
+                "macd": 0,
+                "macd_signal": 0,
+                "macd_hist": 0,
                 "trend_strength": "NOT_ENOUGH_HISTORY",
                 "trend": "NOT_ENOUGH_HISTORY",
                 "trend_score": 0
@@ -1650,6 +1662,38 @@ def get_gold_trend_signal():
         ema20 = float(close.ewm(span=20, adjust=False).mean().iloc[-1])
         ema50 = float(close.ewm(span=50, adjust=False).mean().iloc[-1])
         ema200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1])
+
+        # RSI
+        try:
+            delta = close.diff()
+            gain = delta.clip(lower=0)
+            loss = -delta.clip(upper=0)
+
+            avg_gain = gain.rolling(14).mean()
+            avg_loss = loss.rolling(14).mean()
+
+            rs = avg_gain / avg_loss
+            rsi = float((100 - (100 / (1 + rs))).iloc[-1])
+        except Exception as rsi_error:
+            print("RSI ERROR:", str(rsi_error))
+            rsi = 0
+
+        # MACD
+        try:
+            ema12 = close.ewm(span=12, adjust=False).mean()
+            ema26 = close.ewm(span=26, adjust=False).mean()
+
+            macd_series = ema12 - ema26
+            signal_series = macd_series.ewm(span=9, adjust=False).mean()
+
+            macd_value = float(macd_series.iloc[-1])
+            macd_signal = float(signal_series.iloc[-1])
+            macd_hist = macd_value - macd_signal
+        except Exception as macd_error:
+            print("MACD ERROR:", str(macd_error))
+            macd_value = 0
+            macd_signal = 0
+            macd_hist = 0
 
         try:
             support, resistance = find_swings(df)
@@ -1749,6 +1793,10 @@ def get_gold_trend_signal():
             "ema200": round(ema200, 2),
             "atr": round(atr, 2),
             "adx": round(adx, 2),
+            "rsi": round(rsi, 2),
+            "macd": round(macd_value, 2),
+            "macd_signal": round(macd_signal, 2),
+            "macd_hist": round(macd_hist, 2),
             "trend_strength": trend_strength,
             "trend": trend,
             "trend_score": trend_score
@@ -1773,6 +1821,10 @@ def get_gold_trend_signal():
             "ema200": 0,
             "atr": 0,
             "adx": 0,
+            "rsi": 0,
+            "macd": 0,
+            "macd_signal": 0,
+            "macd_hist": 0,
             "trend_strength": "ERROR",
             "trend": "ERROR",
             "trend_score": -1
