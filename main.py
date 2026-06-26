@@ -743,11 +743,16 @@ def find_swings(df):
     if hasattr(lows, "columns"):
         lows = lows.iloc[:, 0]
 
-    highs = highs.tail(120)
-    lows = lows.tail(120)
+    # Chỉ lấy 48 nến H1 gần nhất ≈ 2 ngày
+    lookback = 48
+
+    highs = highs.tail(lookback)
+    lows = lows.tail(lookback)
 
     resistance = float(highs.max())
     support = float(lows.min())
+
+    return support, resistance
 
     return support, resistance
 def build_trade_plan(gold_trend, total_score):
