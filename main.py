@@ -725,6 +725,11 @@ def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
     low = float(gold_trend.get("low", 0))
+    fib = calculate_fibonacci(high, low)
+
+    fib382 = fib["fib382"]
+    fib500 = fib["fib500"]
+    fib618 = fib["fib618"]
     change_pct = float(gold_trend.get("change_pct", 0))
     trend = gold_trend.get("trend", "SIDEWAY")
     trend_score = int(gold_trend.get("trend_score", 0))
@@ -759,8 +764,8 @@ def build_trade_plan(gold_trend, total_score):
 
     if final_score >= 5:
         direction = "BUY"
-        entry_low = price - atr_like * 0.35
-        entry_high = price - atr_like * 0.15
+        entry_low = min(fib618, fib500)
+        entry_high = max(fib618, fib500)
         sl = entry_low - atr_like * 0.7
         tp1 = price + atr_like * 0.6
         tp2 = price + atr_like * 1.1
@@ -772,8 +777,8 @@ def build_trade_plan(gold_trend, total_score):
 
     elif final_score >= 2:
         direction = "BUY"
-        entry_low = price - atr_like * 0.25
-        entry_high = price - atr_like * 0.10
+        entry_low = min(fib500, fib382)
+        entry_high = max(fib500, fib382)
         sl = entry_low - atr_like * 0.6
         tp1 = price + atr_like * 0.45
         tp2 = price + atr_like * 0.9
@@ -785,8 +790,8 @@ def build_trade_plan(gold_trend, total_score):
 
     elif final_score <= -5:
         direction = "SELL"
-        entry_low = price + atr_like * 0.15
-        entry_high = price + atr_like * 0.35
+        entry_low = min(fib500, fib618)
+        entry_high = max(fib500, fib618)
         sl = entry_high + atr_like * 0.7
         tp1 = price - atr_like * 0.6
         tp2 = price - atr_like * 1.1
@@ -798,8 +803,8 @@ def build_trade_plan(gold_trend, total_score):
 
     elif final_score <= -2:
         direction = "SELL"
-        entry_low = price + atr_like * 0.10
-        entry_high = price + atr_like * 0.25
+        entry_low = min(fib382, fib500)
+        entry_high = max(fib382, fib500)
         sl = entry_high + atr_like * 0.6
         tp1 = price - atr_like * 0.45
         tp2 = price - atr_like * 0.9
@@ -867,6 +872,12 @@ def format_trade_plan(gold_trend, plan):
     msg += f"Open: {open_price}\n"
     msg += f"High: {high}\n"
     msg += f"Low: {low}\n"
+    fib = calculate_fibonacci(high, low)
+
+    msg += "\n📐 Fibonacci\n"
+    msg += f"38.2% : {fib['fib382']}\n"
+    msg += f"50.0% : {fib['fib500']}\n"
+    msg += f"61.8% : {fib['fib618']}\n"
     msg += f"Change: {change_pct}%\n"
     msg += f"Trend: {trend}\n"
     msg += f"Source: {source}\n\n"
@@ -1277,6 +1288,16 @@ def get_gold_ohlc():
     except Exception as e:
         print("TWELVE DATA QUOTE ERROR:", str(e))
         return None
+def calculate_fibonacci(high, low):
+    diff = high - low
+
+    return {
+        "fib236": round(high - diff * 0.236, 2),
+        "fib382": round(high - diff * 0.382, 2),
+        "fib500": round(high - diff * 0.500, 2),
+        "fib618": round(high - diff * 0.618, 2),
+        "fib786": round(high - diff * 0.786, 2)
+    }
 def get_gold_trend_signal():
     try:
         # 1) Lấy giá Spot Gold US$/oz từ TwelveData
