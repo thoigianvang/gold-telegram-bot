@@ -741,18 +741,33 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     resistance = float(gold_trend.get("resistance", 0))
 
     trend = gold_trend.get("trend", "SIDEWAY")
-    trend_score = int(gold_trend.get("trend_score", 0))
-
     adx = float(gold_trend.get("adx", 0))
 
+    ema_score = 0
+    adx_score = 0
     fib_score = 0
     sr_score = 0
-    adx_score = 0
 
-    # 1) EMA Trend Score
-    ema_score = trend_score
+    # 1) EMA / Trend Score
+    if trend == "STRONG_UPTREND":
+        ema_score = 3
+    elif trend == "UPTREND":
+        ema_score = 2
+    elif trend == "RECOVERY_BUT_WEAK":
+        ema_score = 0
+    elif trend == "SIDEWAY":
+        ema_score = 0
+    elif trend == "PULLBACK_BUT_STILL_OK":
+        ema_score = 0
+    elif trend == "DOWNTREND":
+        ema_score = -2
+    elif trend == "STRONG_DOWNTREND":
+        ema_score = -3
+    else:
+        ema_score = 0
 
-    # 2) ADX chỉ xác nhận theo hướng EMA
+    # 2) ADX Score
+    # ADX không tự tạo hướng. Chỉ khuếch đại khi trend rõ.
     if adx >= 30:
         adx_power = 2
     elif adx >= 25:
@@ -760,54 +775,59 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     else:
         adx_power = 0
 
-    if ema_score > 0:
+    if trend in ["STRONG_UPTREND", "UPTREND"]:
         adx_score = adx_power
-    elif ema_score < 0:
+    elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
         adx_score = -adx_power
     else:
         adx_score = 0
 
-    # 3) Fibonacci Score theo hướng trend
+    # 3) Fibonacci Score
     if high > 0 and low > 0 and price > 0:
         fib = calculate_fibonacci(high, low)
         fib382 = fib["fib382"]
         fib500 = fib["fib500"]
         fib618 = fib["fib618"]
 
-        if ema_score < 0:
-            # Downtrend: giá dưới Fib 61.8 hoặc quanh Fib 50/61.8 = ưu tiên SELL
+        # Chỉ dùng Fibonacci để xác nhận xu hướng rõ
+        if trend in ["STRONG_UPTREND", "UPTREND"]:
+            if price >= fib382:
+                fib_score = 1
+            elif fib500 <= price <= fib382:
+                fib_score = 1
+
+        elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
             if price <= fib618:
                 fib_score = -1
             elif fib500 <= price <= fib382:
                 fib_score = -1
 
-        elif ema_score > 0:
-            # Uptrend: giá trên Fib 38.2 hoặc quanh Fib 38.2/50 = ưu tiên BUY
-            if price >= fib382:
-                fib_score = 1
-            elif fib382 <= price <= fib500:
-                fib_score = 1
+        else:
+            fib_score = 0
 
-    # 4) Support / Resistance Score theo hướng trend
+    # 4) Support / Resistance Score
     if price > 0 and support > 0 and resistance > 0:
         distance_to_support = abs(price - support)
         distance_to_resistance = abs(resistance - price)
 
-        # Downtrend: gần resistance mới có giá trị SELL
-        if ema_score < 0:
-            if distance_to_resistance < distance_to_support:
-                sr_score = -2
-            else:
-                sr_score = 0
-
-        # Uptrend: gần support mới có giá trị BUY
-        elif ema_score > 0:
+        # Uptrend: chỉ cộng BUY khi giá gần support hơn resistance
+        if trend in ["STRONG_UPTREND", "UPTREND"]:
             if distance_to_support < distance_to_resistance:
                 sr_score = 2
             else:
                 sr_score = 0
 
-    # 5) Clamp điểm bên ngoài
+        # Downtrend: chỉ cộng SELL khi giá gần resistance hơn support
+        elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
+            if distance_to_resistance < distance_to_support:
+                sr_score = -2
+            else:
+                sr_score = 0
+
+        else:
+            sr_score = 0
+
+    # 5) External scores
     news_score = clamp_score(news_score, -3, 3)
     dollar_score = clamp_score(dollar_score, -2, 2)
     yield_score = clamp_score(yield_score, -2, 2)
