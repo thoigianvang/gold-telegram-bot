@@ -976,6 +976,38 @@ def evaluate_price_location(gold_trend):
         "distance_to_resistance": distance_to_resistance,
         "breakout_risk": breakout_risk
     }
+def classify_trend_bias(trend):
+    bullish_trends = [
+        "STRONG_UPTREND",
+        "UPTREND",
+        "PULLBACK_BUT_STILL_OK"
+    ]
+
+    bearish_trends = [
+        "STRONG_DOWNTREND",
+        "DOWNTREND"
+    ]
+
+    weak_trends = [
+        "RECOVERY_BUT_WEAK",
+        "SIDEWAY",
+        "NO_DATA",
+        "NO_SPOT_DATA",
+        "NO_HISTORY_DATA",
+        "NOT_ENOUGH_HISTORY",
+        "ERROR"
+    ]
+
+    if trend in bullish_trends:
+        return "BULLISH"
+
+    if trend in bearish_trends:
+        return "BEARISH"
+
+    if trend in weak_trends:
+        return "NEUTRAL"
+
+    return "NEUTRAL"
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -984,6 +1016,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     resistance = float(gold_trend.get("resistance", 0))
 
     trend = gold_trend.get("trend", "SIDEWAY")
+    trend_bias = classify_trend_bias(trend)
     adx = float(gold_trend.get("adx", 0))
     atr = float(gold_trend.get("atr", 0))
 
@@ -993,11 +1026,13 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     sr_score = 0
     volatility_score = 0
 
-    # 1) Trend Score
+        # 1) Trend Score
     if trend == "STRONG_UPTREND":
         ema_score = 4
     elif trend == "UPTREND":
         ema_score = 3
+    elif trend == "PULLBACK_BUT_STILL_OK":
+        ema_score = 2
     elif trend == "DOWNTREND":
         ema_score = -3
     elif trend == "STRONG_DOWNTREND":
@@ -1013,9 +1048,9 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     else:
         adx_power = 0
 
-    if trend in ["STRONG_UPTREND", "UPTREND"]:
+        if trend_bias == "BULLISH":
         adx_score = adx_power
-    elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
+    elif trend_bias == "BEARISH":
         adx_score = -adx_power
     else:
         adx_score = 0
@@ -1027,11 +1062,11 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         fib500 = fib["fib500"]
         fib618 = fib["fib618"]
 
-        if trend in ["STRONG_UPTREND", "UPTREND"]:
+        if trend_bias == "BULLISH":
             if price >= fib382 or fib500 <= price <= fib382:
                 fib_score = 1
 
-        elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
+         elif trend_bias == "BEARISH":
             if price <= fib618 or fib500 <= price <= fib382:
                 fib_score = -1
 
@@ -1040,11 +1075,11 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         distance_to_support = abs(price - support)
         distance_to_resistance = abs(resistance - price)
 
-        if trend in ["STRONG_UPTREND", "UPTREND"]:
+        if trend_bias == "BULLISH":
             if distance_to_support < distance_to_resistance:
                 sr_score = 2
 
-        elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
+         elif trend_bias == "BEARISH":
             if distance_to_resistance < distance_to_support:
                 sr_score = -2
 
@@ -1093,6 +1128,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
 
     return {
         "trend_score": ema_score,
+        "trend_bias": trend_bias,
         "adx_score": adx_score,
         "fib_score": fib_score,
         "sr_score": sr_score,
