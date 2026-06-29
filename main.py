@@ -1079,7 +1079,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
             if distance_to_support < distance_to_resistance:
                 sr_score = 2
 
-         elif trend_bias == "BEARISH":
+        elif trend_bias == "BEARISH":
             if distance_to_resistance < distance_to_support:
                 sr_score = -2
 
