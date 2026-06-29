@@ -2084,9 +2084,9 @@ def format_trade_plan(gold_trend, plan, score=None):
             msg += "• Chờ nến xác nhận.\n"
 
         if score is not None:
-        scenarios = build_scenarios(gold_trend, score)
+            scenarios = build_scenarios(gold_trend, score)
 
-        msg += "\n📌 V18 SCENARIOS\n"
+            msg += "\n📌 V18 SCENARIOS\n"
 
         for s in scenarios:
             msg += f"\nScenario {s['name']}: {s['type']}\n"
