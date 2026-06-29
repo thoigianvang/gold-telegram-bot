@@ -1048,7 +1048,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     else:
         adx_power = 0
 
-        if trend_bias == "BULLISH":
+    if trend_bias == "BULLISH":
         adx_score = adx_power
     elif trend_bias == "BEARISH":
         adx_score = -adx_power
