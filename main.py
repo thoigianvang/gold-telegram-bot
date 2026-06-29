@@ -1978,7 +1978,7 @@ def build_scenarios(gold_trend, score):
         })
 
     return scenarios
-def format_trade_plan(gold_trend, plan, score=None):
+def format_trade_plan(gold_trend, plan, score=None, ai_decision=None):
     price = gold_trend.get("price", "-")
     open_price = gold_trend.get("open", "-")
     high = gold_trend.get("high", "-")
@@ -2000,7 +2000,7 @@ def format_trade_plan(gold_trend, plan, score=None):
     else:
         icon = "⚪"
 
-    msg = "📊 XAU/USD TRADE PLAN V11\n\n"
+    msg = "📊 XAU/USD TRADE PLAN V18\n\n"
 
     msg += "🥇 GOLD US$/OZ\n"
     msg += f"Price: {price}\n"
@@ -2041,11 +2041,14 @@ def format_trade_plan(gold_trend, plan, score=None):
     msg += f"RR: {plan.get('rr')}\n\n"
 
     msg += "📝 NOTE\n"
-    msg += f"{plan.get('note')}\n\n"
+    msg += f"{plan.get('note')}\n"
 
     if score is not None:
         context = analyze_trade_context(gold_trend, plan, score)
-        ai_decision = build_ai_decision(plan, gold_trend, score)
+
+        if ai_decision is None:
+            ai_decision = build_ai_decision(plan, gold_trend, score)
+
         msg += "\n🤖 V14 AI DECISION\n"
         msg += f"Trade Type: {ai_decision['trade_type']}\n"
         msg += f"Decision: {ai_decision['decision']}\n"
@@ -2064,6 +2067,7 @@ def format_trade_plan(gold_trend, plan, score=None):
                 msg += f"• {item}\n"
         else:
             msg += "• Không có điểm yếu lớn.\n"
+
         msg += "\n🧭 V11 DECISION CONTEXT\n"
         msg += f"Entry Quality: {context['entry_quality']}\n"
         msg += f"Risk Level: {context['risk_level']}\n"
@@ -2083,10 +2087,9 @@ def format_trade_plan(gold_trend, plan, score=None):
         else:
             msg += "• Chờ nến xác nhận.\n"
 
-        if score is not None:
-            scenarios = build_scenarios(gold_trend, score)
+        scenarios = build_scenarios(gold_trend, score)
 
-            msg += "\n📌 V18 SCENARIOS\n"
+        msg += "\n📌 V18 SCENARIOS\n"
 
         for s in scenarios:
             msg += f"\nScenario {s['name']}: {s['type']}\n"
