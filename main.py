@@ -1066,7 +1066,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
             if price >= fib382 or fib500 <= price <= fib382:
                 fib_score = 1
 
-         elif trend_bias == "BEARISH":
+        elif trend_bias == "BEARISH":
             if price <= fib618 or fib500 <= price <= fib382:
                 fib_score = -1
 
