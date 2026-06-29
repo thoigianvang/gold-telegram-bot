@@ -2991,34 +2991,43 @@ def classify_trade_type(plan, gold_trend, score):
     trend_bias = score.get("trend_bias", "NEUTRAL")
     momentum = score.get("momentum", "NEUTRAL")
     price_location = score.get("price_location", "UNKNOWN")
-    breakout_risk = score.get("breakout_risk", "UNKNOWN")
-    probability = int(score.get("probability", 50))
 
+    adx = float(gold_trend.get("adx", 0))
+
+    # Nếu plan đang WAIT nhưng market bias rõ, vẫn phân loại setup
     if direction == "WAIT":
+        if trend_bias == "BULLISH" and adx >= 30:
+            if price_location in ["MIDDLE", "HIGH_RANGE", "NEAR_RESISTANCE"]:
+                return "WAIT_PULLBACK_BUY"
+            if price_location in ["LOW_RANGE", "NEAR_SUPPORT"]:
+                return "VALUE_BUY"
+            return "TREND_BUY_OBSERVE"
+
+        if trend_bias == "BEARISH" and adx >= 30:
+            if price_location in ["MIDDLE", "LOW_RANGE", "NEAR_SUPPORT"]:
+                return "WAIT_PULLBACK_SELL"
+            if price_location in ["HIGH_RANGE", "NEAR_RESISTANCE"]:
+                return "VALUE_SELL"
+            return "TREND_SELL_OBSERVE"
+
         return "NO_SETUP"
 
     if direction == "BUY":
-        if trend_bias == "BULLISH" and status == "WAIT_PULLBACK":
+        if status == "WAIT_PULLBACK":
             return "PULLBACK_BUY"
-
-        if trend_bias == "BULLISH" and price_location in ["HIGH_RANGE", "NEAR_RESISTANCE"]:
-            return "BREAKOUT_BUY"
-
+        if trend_bias == "BULLISH" and price_location in ["MIDDLE", "HIGH_RANGE"]:
+            return "TREND_BUY"
         if price_location in ["NEAR_SUPPORT", "LOW_RANGE"] and momentum == "BULLISH":
-            return "RANGE_BUY"
-
+            return "VALUE_BUY"
         return "BUY_SETUP"
 
     if direction == "SELL":
-        if trend_bias == "BEARISH" and status == "WAIT_PULLBACK":
+        if status == "WAIT_PULLBACK":
             return "PULLBACK_SELL"
-
-        if trend_bias == "BEARISH" and price_location in ["LOW_RANGE", "NEAR_SUPPORT"]:
-            return "BREAKDOWN_SELL"
-
+        if trend_bias == "BEARISH" and price_location in ["MIDDLE", "LOW_RANGE"]:
+            return "TREND_SELL"
         if price_location in ["NEAR_RESISTANCE", "HIGH_RANGE"] and momentum == "BEARISH":
-            return "RANGE_SELL"
-
+            return "VALUE_SELL"
         return "SELL_SETUP"
 
     return "NO_SETUP"
@@ -3032,8 +3041,6 @@ def build_ai_decision(plan, gold_trend, score):
     breakout_risk = score.get("breakout_risk", "UNKNOWN")
 
     adx = float(gold_trend.get("adx", 0))
-    atr = float(gold_trend.get("atr", 0))
-    trend = gold_trend.get("trend", "SIDEWAY")
 
     direction = plan.get("direction", "WAIT")
     status = plan.get("status", "WAIT")
@@ -3048,7 +3055,17 @@ def build_ai_decision(plan, gold_trend, score):
 
     strengths = []
     weaknesses = []
-    decision = status
+
+    trade_ready = (
+        direction in ["BUY", "SELL"]
+        and rr_value >= 1.5
+        and probability >= 70
+    )
+
+    trend_ready = (
+        trend_bias in ["BULLISH", "BEARISH"]
+        and adx >= 30
+    )
 
     if probability >= 75:
         strengths.append(f"Probability cao: {probability}%.")
@@ -3089,16 +3106,23 @@ def build_ai_decision(plan, gold_trend, score):
     elif rr_value > 0 and rr_value < 1.5:
         weaknesses.append(f"RR thấp: {rr_value}. Không đáng vào ngay.")
 
-    if status == "WAIT_PULLBACK":
-        decision = "WAIT_PULLBACK"
-    elif direction in ["BUY", "SELL"] and rr_value >= 1.5 and probability >= 70:
+    if trade_ready:
         decision = "READY"
-    elif direction == "WAIT":
+        ai_confidence = "READY"
+    elif status == "WAIT_PULLBACK" or trend_ready:
+        decision = "WAIT_PULLBACK"
+        ai_confidence = "WAIT_PULLBACK"
+    elif probability >= 60:
+        decision = "OBSERVE"
+        ai_confidence = "OBSERVE"
+    else:
         decision = "WAIT"
+        ai_confidence = "NO_SETUP"
 
     return {
         "trade_type": trade_type,
         "decision": decision,
+        "ai_confidence": ai_confidence,
         "strengths": strengths,
         "weaknesses": weaknesses,
         "summary": (
@@ -3111,8 +3135,6 @@ def validate_trade_plan(plan, gold_trend, score):
     probability = int(score.get("probability", 50))
     confidence = score.get("confidence", "WAIT")
     trend_bias = score.get("trend_bias", "NEUTRAL")
-    momentum = score.get("momentum", "NEUTRAL")
-    price_location = score.get("price_location", "UNKNOWN")
 
     rr = plan.get("rr", "-")
     try:
@@ -3121,9 +3143,7 @@ def validate_trade_plan(plan, gold_trend, score):
         rr_value = 0
 
     direction = plan.get("direction", "WAIT")
-    status = plan.get("status", "WAIT")
 
-    # 1) Nếu điểm yếu thì luôn WAIT
     if abs(final_score) < 4 or probability < 60:
         return {
             "status": "WAIT",
@@ -3134,15 +3154,11 @@ def validate_trade_plan(plan, gold_trend, score):
             "tp2": "-",
             "tp3": "-",
             "rr": "-",
-            "note": (
-                f"WAIT. Final Score: {final_score}, Probability: {probability}%. "
-                "Edge chưa đủ mạnh. Không vào lệnh."
-            )
+            "note": f"WAIT. Final Score: {final_score}, Probability: {probability}%. Edge chưa đủ mạnh."
         }
 
-    # 2) Nếu score mạnh nhưng RR xấu thì WAIT_PULLBACK, không NO_TRADE
     if rr_value < 1.5:
-        if final_score >= 6:
+        if final_score >= 4 and trend_bias == "BULLISH":
             return {
                 "status": "WAIT_PULLBACK",
                 "direction": "BUY",
@@ -3152,13 +3168,10 @@ def validate_trade_plan(plan, gold_trend, score):
                 "tp2": plan.get("tp2"),
                 "tp3": plan.get("tp3"),
                 "rr": rr,
-                "note": (
-                    f"BUY setup có lực. Final Score: {final_score}, Probability: {probability}%. "
-                    f"Nhưng RR thấp ({rr_value}), không BUY ngay. Chờ hồi sâu hơn."
-                )
+                "note": f"BUY setup có lực. Final Score: {final_score}, Probability: {probability}%. Nhưng RR thấp ({rr_value}), không BUY ngay. Chờ hồi sâu hơn."
             }
 
-        if final_score <= -6:
+        if final_score <= -4 and trend_bias == "BEARISH":
             return {
                 "status": "WAIT_PULLBACK",
                 "direction": "SELL",
@@ -3168,10 +3181,7 @@ def validate_trade_plan(plan, gold_trend, score):
                 "tp2": plan.get("tp2"),
                 "tp3": plan.get("tp3"),
                 "rr": rr,
-                "note": (
-                    f"SELL setup có lực. Final Score: {final_score}, Probability: {probability}%. "
-                    f"Nhưng RR thấp ({rr_value}), không SELL ngay. Chờ hồi sâu hơn."
-                )
+                "note": f"SELL setup có lực. Final Score: {final_score}, Probability: {probability}%. Nhưng RR thấp ({rr_value}), không SELL ngay. Chờ hồi sâu hơn."
             }
 
         return {
@@ -3186,7 +3196,6 @@ def validate_trade_plan(plan, gold_trend, score):
             "note": f"NO TRADE. RR thấp ({rr_value}). Tối thiểu cần 1.5."
         }
 
-    # 3) Nếu điểm mạnh và RR đạt
     if final_score >= 6 and rr_value >= 1.5:
         return {
             "status": "READY",
@@ -3197,10 +3206,7 @@ def validate_trade_plan(plan, gold_trend, score):
             "tp2": plan.get("tp2"),
             "tp3": plan.get("tp3"),
             "rr": rr,
-            "note": (
-                f"BUY READY. Final Score: {final_score}, Probability: {probability}%, "
-                f"Confidence: {confidence}. Chỉ BUY tại Entry Zone khi có nến xác nhận."
-            )
+            "note": f"BUY READY. Final Score: {final_score}, Probability: {probability}%, Confidence: {confidence}. Chỉ BUY tại Entry Zone khi có nến xác nhận."
         }
 
     if final_score <= -6 and rr_value >= 1.5:
@@ -3213,15 +3219,11 @@ def validate_trade_plan(plan, gold_trend, score):
             "tp2": plan.get("tp2"),
             "tp3": plan.get("tp3"),
             "rr": rr,
-            "note": (
-                f"SELL READY. Final Score: {final_score}, Probability: {probability}%, "
-                f"Confidence: {confidence}. Chỉ SELL tại Entry Zone khi có nến xác nhận."
-            )
+            "note": f"SELL READY. Final Score: {final_score}, Probability: {probability}%, Confidence: {confidence}. Chỉ SELL tại Entry Zone khi có nến xác nhận."
         }
 
-    # 4) Trường hợp còn lại
     return {
-        "status": status,
+        "status": "OBSERVE",
         "direction": direction,
         "entry": plan.get("entry"),
         "sl": plan.get("sl"),
@@ -3229,7 +3231,7 @@ def validate_trade_plan(plan, gold_trend, score):
         "tp2": plan.get("tp2"),
         "tp3": plan.get("tp3"),
         "rr": rr,
-        "note": plan.get("note")
+        "note": f"OBSERVE. Final Score: {final_score}, Probability: {probability}%. Có tín hiệu nhưng chưa đủ điều kiện READY."
     }
 def manual_test(events, state):
     session_report(events, state, "TEST TREND")
