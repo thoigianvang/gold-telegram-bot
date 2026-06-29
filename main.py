@@ -1716,7 +1716,7 @@ def format_trade_plan(gold_trend, plan, score=None):
     if score is not None:
         context = analyze_trade_context(gold_trend, plan, score)
         ai_decision = build_ai_decision(plan, gold_trend, score)
-                msg += "\n🤖 V14 AI DECISION\n"
+        msg += "\n🤖 V14 AI DECISION\n"
         msg += f"Trade Type: {ai_decision['trade_type']}\n"
         msg += f"Decision: {ai_decision['decision']}\n"
         msg += f"Summary: {ai_decision['summary']}\n"
