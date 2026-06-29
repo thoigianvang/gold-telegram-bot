@@ -2028,9 +2028,9 @@ def format_trade_plan(gold_trend, plan, score=None, ai_decision=None):
     msg += f"ADX: {adx}\n"
     msg += f"ATR: {atr}\n"
     msg += f"Trend Strength: {trend_strength}\n"
-    msg += f"Source: {source}\n\n"
+    msg += f"Source: {source}\n"
 
-    msg += "🎯 PLAN\n"
+    msg += "\n🎯 PLAN\n"
     msg += f"Status: {status}\n"
     msg += f"{icon} Direction: {direction}\n"
     msg += f"Entry Zone: {plan.get('entry')}\n"
@@ -2038,67 +2038,86 @@ def format_trade_plan(gold_trend, plan, score=None, ai_decision=None):
     msg += f"TP1: {plan.get('tp1')}\n"
     msg += f"TP2: {plan.get('tp2')}\n"
     msg += f"TP3: {plan.get('tp3')}\n"
-    msg += f"RR: {plan.get('rr')}\n\n"
+    msg += f"RR: {plan.get('rr')}\n"
 
-    msg += "📝 NOTE\n"
+    msg += "\n📝 NOTE\n"
     msg += f"{plan.get('note')}\n"
 
     if score is not None:
         context = analyze_trade_context(gold_trend, plan, score)
 
         if ai_decision is None:
-            ai_decision = build_ai_decision(plan, gold_trend, score)
+            try:
+                ai_decision = build_ai_decision(plan, gold_trend, score)
+            except Exception as e:
+                ai_decision = {
+                    "trade_type": "NO_SETUP",
+                    "decision": "WAIT",
+                    "summary": f"AI decision error: {str(e)}",
+                    "strengths": [],
+                    "weaknesses": []
+                }
 
         msg += "\n🤖 V14 AI DECISION\n"
-        msg += f"Trade Type: {ai_decision['trade_type']}\n"
-        msg += f"Decision: {ai_decision['decision']}\n"
-        msg += f"Summary: {ai_decision['summary']}\n"
+        msg += f"Trade Type: {ai_decision.get('trade_type', 'NO_SETUP')}\n"
+        msg += f"Decision: {ai_decision.get('decision', 'WAIT')}\n"
+        msg += f"Summary: {ai_decision.get('summary', '-')}\n"
 
+        strengths = ai_decision.get("strengths", [])
         msg += "\n✅ Strengths\n"
-        if ai_decision["strengths"]:
-            for item in ai_decision["strengths"]:
+        if strengths:
+            for item in strengths:
                 msg += f"• {item}\n"
         else:
             msg += "• Không có lợi thế rõ.\n"
 
+        weaknesses = ai_decision.get("weaknesses", [])
         msg += "\n⚠️ Weaknesses\n"
-        if ai_decision["weaknesses"]:
-            for item in ai_decision["weaknesses"]:
+        if weaknesses:
+            for item in weaknesses:
                 msg += f"• {item}\n"
         else:
             msg += "• Không có điểm yếu lớn.\n"
 
         msg += "\n🧭 V11 DECISION CONTEXT\n"
-        msg += f"Entry Quality: {context['entry_quality']}\n"
-        msg += f"Risk Level: {context['risk_level']}\n"
-        msg += f"Expected Hold Time: {context['hold_time']}\n"
+        msg += f"Entry Quality: {context.get('entry_quality', '-')}\n"
+        msg += f"Risk Level: {context.get('risk_level', '-')}\n"
+        msg += f"Expected Hold Time: {context.get('hold_time', '-')}\n"
 
+        reasons = context.get("reasons", [])
         msg += "\n📌 Reason\n"
-        if context["reasons"]:
-            for reason in context["reasons"]:
+        if reasons:
+            for reason in reasons:
                 msg += f"• {reason}\n"
         else:
             msg += "• Tín hiệu không có xung đột lớn.\n"
 
+        actions = context.get("actions", [])
         msg += "\n✅ Next Action\n"
-        if context["actions"]:
-            for action in context["actions"]:
+        if actions:
+            for action in actions:
                 msg += f"• {action}\n"
         else:
             msg += "• Chờ nến xác nhận.\n"
 
-        scenarios = build_scenarios(gold_trend, score)
+        try:
+            scenarios = build_scenarios(gold_trend, score)
+        except Exception as e:
+            scenarios = []
 
         msg += "\n📌 V18 SCENARIOS\n"
 
-        for s in scenarios:
-            msg += f"\nScenario {s['name']}: {s['type']}\n"
-            msg += f"Condition: {s['condition']}\n"
-            msg += f"Entry: {s['entry']}\n"
-            msg += f"SL: {s['sl']}\n"
-            msg += f"TP1: {s['tp1']}\n"
-            msg += f"TP2: {s['tp2']}\n"
-            msg += f"Note: {s['note']}\n"
+        if scenarios:
+            for s in scenarios:
+                msg += f"\nScenario {s.get('name', '-')}: {s.get('type', '-')}\n"
+                msg += f"Condition: {s.get('condition', '-')}\n"
+                msg += f"Entry: {s.get('entry', '-')}\n"
+                msg += f"SL: {s.get('sl', '-')}\n"
+                msg += f"TP1: {s.get('tp1', '-')}\n"
+                msg += f"TP2: {s.get('tp2', '-')}\n"
+                msg += f"Note: {s.get('note', '-')}\n"
+        else:
+            msg += "Không tạo được scenario.\n"
 
     msg += "\n⚠️ Đây là kế hoạch theo mô hình bias, không phải lệnh vào trực tiếp."
     msg += "\nChỉ vào lệnh khi có nến xác nhận và spread ổn."
@@ -3382,89 +3401,113 @@ def build_ai_decision(plan, gold_trend, score):
     final_score = int(score.get("final_score", 0))
     probability = int(score.get("probability", 50))
     confidence = score.get("confidence", "WAIT")
+
     trend_bias = score.get("trend_bias", "NEUTRAL")
     momentum = score.get("momentum", "NEUTRAL")
     price_location = score.get("price_location", "UNKNOWN")
     breakout_risk = score.get("breakout_risk", "UNKNOWN")
+    market_regime = score.get("market_regime", "UNKNOWN")
+    regime_action = score.get("regime_action", "OBSERVE")
 
     adx = float(gold_trend.get("adx", 0))
+    trend = gold_trend.get("trend", "SIDEWAY")
 
     direction = plan.get("direction", "WAIT")
     status = plan.get("status", "WAIT")
 
-    rr = plan.get("rr", "-")
     try:
-        rr_value = float(rr)
+        rr_value = float(plan.get("rr", 0))
     except:
         rr_value = 0
 
-    trade_type = classify_trade_type(plan, gold_trend, score)
+    try:
+        trade_type = classify_trade_type(plan, gold_trend, score)
+    except:
+        trade_type = "NO_SETUP"
 
     strengths = []
     weaknesses = []
 
-    trade_ready = (
-        direction in ["BUY", "SELL"]
-        and rr_value >= 1.5
-        and probability >= 70
-    )
-
-    trend_ready = (
-        trend_bias in ["BULLISH", "BEARISH"]
-        and adx >= 30
-    )
-
+    # ===== Strengths =====
     if probability >= 75:
         strengths.append(f"Probability cao: {probability}%.")
-    elif probability < 60:
-        weaknesses.append(f"Probability thấp: {probability}%.")
+    elif probability >= 65:
+        strengths.append(f"Probability tạm ổn: {probability}%.")
 
     if adx >= 30:
         strengths.append(f"ADX mạnh: {adx}. Thị trường có lực.")
-    elif adx < 20:
-        weaknesses.append(f"ADX yếu: {adx}. Dễ nhiễu.")
+    elif adx >= 25:
+        strengths.append(f"ADX ổn: {adx}.")
 
     if trend_bias == "BULLISH":
         strengths.append("Trend Bias: BULLISH.")
     elif trend_bias == "BEARISH":
         strengths.append("Trend Bias: BEARISH.")
-    else:
-        weaknesses.append("Trend Bias trung lập.")
 
     if momentum == "BULLISH":
         strengths.append("Momentum: BULLISH.")
     elif momentum == "BEARISH":
-        weaknesses.append("Momentum: BEARISH.")
-    else:
-        weaknesses.append("Momentum chưa rõ.")
+        strengths.append("Momentum: BEARISH.")
 
     if price_location in ["NEAR_SUPPORT", "LOW_RANGE"]:
         strengths.append(f"Price Location tốt cho BUY: {price_location}.")
     elif price_location in ["NEAR_RESISTANCE", "HIGH_RANGE"]:
-        weaknesses.append(f"Giá đang cao trong range: {price_location}.")
+        strengths.append(f"Price Location tốt cho SELL: {price_location}.")
 
     if breakout_risk == "LOW":
         strengths.append("Breakout Risk thấp.")
-    elif breakout_risk == "HIGH":
-        weaknesses.append("Breakout Risk cao.")
 
     if rr_value >= 2:
         strengths.append(f"RR tốt: {rr_value}.")
-    elif rr_value > 0 and rr_value < 1.5:
+    elif rr_value >= 1.5:
+        strengths.append(f"RR đạt chuẩn: {rr_value}.")
+
+    # ===== Weaknesses =====
+    if probability < 60:
+        weaknesses.append(f"Probability thấp: {probability}%.")
+
+    if adx < 20:
+        weaknesses.append(f"ADX yếu: {adx}. Dễ nhiễu.")
+
+    if trend == "SIDEWAY":
+        weaknesses.append("Trend chưa rõ: SIDEWAY.")
+
+    if trend_bias == "NEUTRAL":
+        weaknesses.append("Trend Bias trung lập.")
+
+    if momentum == "NEUTRAL":
+        weaknesses.append("Momentum chưa rõ.")
+
+    if rr_value > 0 and rr_value < 1.5:
         weaknesses.append(f"RR thấp: {rr_value}. Không đáng vào ngay.")
 
-    if trade_ready:
+    if breakout_risk == "HIGH":
+        weaknesses.append("Breakout Risk cao.")
+
+    # ===== Decision =====
+    if direction in ["BUY", "SELL"] and status == "READY" and rr_value >= 1.5 and probability >= 70:
         decision = "READY"
-        ai_confidence = "READY"
-    elif status == "WAIT_PULLBACK" or trend_ready:
+        ai_confidence = "HIGH"
+
+    elif status == "WAIT_PULLBACK":
         decision = "WAIT_PULLBACK"
-        ai_confidence = "WAIT_PULLBACK"
+        ai_confidence = "MEDIUM"
+
+    elif market_regime in ["RANGE_EDGE", "RANGE_ACTIVE"]:
+        decision = regime_action
+        ai_confidence = "OBSERVE"
+
     elif probability >= 60:
         decision = "OBSERVE"
-        ai_confidence = "OBSERVE"
+        ai_confidence = "MEDIUM"
+
     else:
         decision = "WAIT"
-        ai_confidence = "NO_SETUP"
+        ai_confidence = "LOW"
+
+    # ===== Trade Type Fix =====
+    if direction == "WAIT" or status in ["NO_TRADE", "WAIT"]:
+        trade_type = "NO_SETUP"
 
     return {
         "trade_type": trade_type,
@@ -3474,7 +3517,8 @@ def build_ai_decision(plan, gold_trend, score):
         "weaknesses": weaknesses,
         "summary": (
             f"{decision}. {trade_type}. "
-            f"Final Score: {final_score}, Probability: {probability}%, Confidence: {confidence}."
+            f"Regime: {market_regime}. Final Score: {final_score}, "
+            f"Probability: {probability}%, Confidence: {confidence}."
         )
     }
 def validate_trade_plan(plan, gold_trend, score):
