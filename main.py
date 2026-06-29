@@ -3502,7 +3502,7 @@ def manual_test(events, state):
     gate = pre_trade_gate(gold_trend, score)
 
     if not gate["allow"]:
-    plan = {
+        plan = {
         "status": gate["status"],
         "direction": "WAIT",
         "entry": "-",
