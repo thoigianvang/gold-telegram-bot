@@ -1892,6 +1892,92 @@ def analyze_trade_context(gold_trend, plan, score):
         "risk_level": risk_level,
         "hold_time": hold_time
     }
+def build_scenarios(gold_trend, score):
+    price = float(gold_trend.get("price", 0))
+    support = float(gold_trend.get("support", 0))
+    resistance = float(gold_trend.get("resistance", 0))
+    atr = float(gold_trend.get("atr", 0))
+
+    regime = score.get("market_regime", "UNKNOWN")
+    price_location = score.get("price_location", "UNKNOWN")
+    momentum = score.get("momentum", "NEUTRAL")
+    probability = int(score.get("probability", 50))
+
+    if atr <= 0:
+        atr = max(price * 0.003, 10)
+
+    breakout_buy = resistance + atr * 0.15
+    breakdown_sell = support - atr * 0.15
+
+    buy_sl = breakout_buy - atr * 0.8
+    buy_tp1 = breakout_buy + atr * 0.8
+    buy_tp2 = breakout_buy + atr * 1.4
+
+    sell_sl = breakdown_sell + atr * 0.8
+    sell_tp1 = breakdown_sell - atr * 0.8
+    sell_tp2 = breakdown_sell - atr * 1.4
+
+    scenarios = []
+
+    scenarios.append({
+        "name": "A",
+        "type": "BUY_BREAKOUT",
+        "condition": f"Giá phá lên trên {round(breakout_buy, 2)} và đóng nến M5/M15 phía trên.",
+        "entry": round(breakout_buy, 2),
+        "sl": round(buy_sl, 2),
+        "tp1": round(buy_tp1, 2),
+        "tp2": round(buy_tp2, 2),
+        "note": "Chỉ BUY nếu breakout thật, không BUY khi giá chỉ quét lên rồi rút chân."
+    })
+
+    scenarios.append({
+        "name": "B",
+        "type": "SELL_BREAKDOWN",
+        "condition": f"Giá thủng dưới {round(breakdown_sell, 2)} và đóng nến M5/M15 phía dưới.",
+        "entry": round(breakdown_sell, 2),
+        "sl": round(sell_sl, 2),
+        "tp1": round(sell_tp1, 2),
+        "tp2": round(sell_tp2, 2),
+        "note": "Chỉ SELL nếu breakdown thật, không SELL khi giá chỉ quét xuống rồi bật lại."
+    })
+
+    if price_location in ["NEAR_SUPPORT", "LOW_RANGE"]:
+        scenarios.append({
+            "name": "C",
+            "type": "SUPPORT_REVERSAL_BUY",
+            "condition": "Giá giữ support và xuất hiện nến đảo chiều tăng rõ.",
+            "entry": "Sau nến xác nhận",
+            "sl": round(support - atr * 0.5, 2),
+            "tp1": round(price + atr * 0.7, 2),
+            "tp2": round(price + atr * 1.2, 2),
+            "note": "Chỉ BUY đảo chiều nếu momentum chuyển BULLISH."
+        })
+
+    elif price_location in ["NEAR_RESISTANCE", "HIGH_RANGE"]:
+        scenarios.append({
+            "name": "C",
+            "type": "RESISTANCE_REJECTION_SELL",
+            "condition": "Giá chạm resistance và xuất hiện nến từ chối giảm rõ.",
+            "entry": "Sau nến xác nhận",
+            "sl": round(resistance + atr * 0.5, 2),
+            "tp1": round(price - atr * 0.7, 2),
+            "tp2": round(price - atr * 1.2, 2),
+            "note": "Chỉ SELL đảo chiều nếu momentum chuyển BEARISH."
+        })
+
+    else:
+        scenarios.append({
+            "name": "C",
+            "type": "NO_TRADE_RANGE",
+            "condition": "Giá tiếp tục đi giữa range, không gần support/resistance.",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "note": "Không giao dịch khi giá nằm giữa range."
+        })
+
+    return scenarios
 def format_trade_plan(gold_trend, plan, score=None):
     price = gold_trend.get("price", "-")
     open_price = gold_trend.get("open", "-")
@@ -1996,6 +2082,20 @@ def format_trade_plan(gold_trend, plan, score=None):
                 msg += f"• {action}\n"
         else:
             msg += "• Chờ nến xác nhận.\n"
+
+        if score is not None:
+        scenarios = build_scenarios(gold_trend, score)
+
+        msg += "\n📌 V18 SCENARIOS\n"
+
+        for s in scenarios:
+            msg += f"\nScenario {s['name']}: {s['type']}\n"
+            msg += f"Condition: {s['condition']}\n"
+            msg += f"Entry: {s['entry']}\n"
+            msg += f"SL: {s['sl']}\n"
+            msg += f"TP1: {s['tp1']}\n"
+            msg += f"TP2: {s['tp2']}\n"
+            msg += f"Note: {s['note']}\n"
 
     msg += "\n⚠️ Đây là kế hoạch theo mô hình bias, không phải lệnh vào trực tiếp."
     msg += "\nChỉ vào lệnh khi có nến xác nhận và spread ổn."
@@ -3517,7 +3617,7 @@ def manual_test(events, state):
         plan = validate_trade_plan(plan, gold_trend, score)
         plan = apply_trade_filters(plan, gold_trend, score)
 
-    trade_msg = format_trade_plan(gold_trend, plan, score)
+    trade_msg = format_trade_plan(gold_trend, plan, score, score)
     score_msg = format_score_engine(score)
 
     send_telegram(trade_msg + "\n\n" + score_msg)
