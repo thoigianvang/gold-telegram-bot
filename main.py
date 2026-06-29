@@ -1715,7 +1715,25 @@ def format_trade_plan(gold_trend, plan, score=None):
 
     if score is not None:
         context = analyze_trade_context(gold_trend, plan, score)
+        ai_decision = build_ai_decision(plan, gold_trend, score)
+                msg += "\n🤖 V14 AI DECISION\n"
+        msg += f"Trade Type: {ai_decision['trade_type']}\n"
+        msg += f"Decision: {ai_decision['decision']}\n"
+        msg += f"Summary: {ai_decision['summary']}\n"
 
+        msg += "\n✅ Strengths\n"
+        if ai_decision["strengths"]:
+            for item in ai_decision["strengths"]:
+                msg += f"• {item}\n"
+        else:
+            msg += "• Không có lợi thế rõ.\n"
+
+        msg += "\n⚠️ Weaknesses\n"
+        if ai_decision["weaknesses"]:
+            for item in ai_decision["weaknesses"]:
+                msg += f"• {item}\n"
+        else:
+            msg += "• Không có điểm yếu lớn.\n"
         msg += "\n🧭 V11 DECISION CONTEXT\n"
         msg += f"Entry Quality: {context['entry_quality']}\n"
         msg += f"Risk Level: {context['risk_level']}\n"
@@ -2965,7 +2983,129 @@ def check_bias_reversal(state, total_score):
             f"New Score: {total_score}"
         )
 
-    state["last_bias_score"] = total_score  
+    state["last_bias_score"] = total_score 
+def classify_trade_type(plan, gold_trend, score):
+    direction = plan.get("direction", "WAIT")
+    status = plan.get("status", "WAIT")
+
+    trend_bias = score.get("trend_bias", "NEUTRAL")
+    momentum = score.get("momentum", "NEUTRAL")
+    price_location = score.get("price_location", "UNKNOWN")
+    breakout_risk = score.get("breakout_risk", "UNKNOWN")
+    probability = int(score.get("probability", 50))
+
+    if direction == "WAIT":
+        return "NO_SETUP"
+
+    if direction == "BUY":
+        if trend_bias == "BULLISH" and status == "WAIT_PULLBACK":
+            return "PULLBACK_BUY"
+
+        if trend_bias == "BULLISH" and price_location in ["HIGH_RANGE", "NEAR_RESISTANCE"]:
+            return "BREAKOUT_BUY"
+
+        if price_location in ["NEAR_SUPPORT", "LOW_RANGE"] and momentum == "BULLISH":
+            return "RANGE_BUY"
+
+        return "BUY_SETUP"
+
+    if direction == "SELL":
+        if trend_bias == "BEARISH" and status == "WAIT_PULLBACK":
+            return "PULLBACK_SELL"
+
+        if trend_bias == "BEARISH" and price_location in ["LOW_RANGE", "NEAR_SUPPORT"]:
+            return "BREAKDOWN_SELL"
+
+        if price_location in ["NEAR_RESISTANCE", "HIGH_RANGE"] and momentum == "BEARISH":
+            return "RANGE_SELL"
+
+        return "SELL_SETUP"
+
+    return "NO_SETUP"
+def build_ai_decision(plan, gold_trend, score):
+    final_score = int(score.get("final_score", 0))
+    probability = int(score.get("probability", 50))
+    confidence = score.get("confidence", "WAIT")
+    trend_bias = score.get("trend_bias", "NEUTRAL")
+    momentum = score.get("momentum", "NEUTRAL")
+    price_location = score.get("price_location", "UNKNOWN")
+    breakout_risk = score.get("breakout_risk", "UNKNOWN")
+
+    adx = float(gold_trend.get("adx", 0))
+    atr = float(gold_trend.get("atr", 0))
+    trend = gold_trend.get("trend", "SIDEWAY")
+
+    direction = plan.get("direction", "WAIT")
+    status = plan.get("status", "WAIT")
+
+    rr = plan.get("rr", "-")
+    try:
+        rr_value = float(rr)
+    except:
+        rr_value = 0
+
+    trade_type = classify_trade_type(plan, gold_trend, score)
+
+    strengths = []
+    weaknesses = []
+    decision = status
+
+    if probability >= 75:
+        strengths.append(f"Probability cao: {probability}%.")
+    elif probability < 60:
+        weaknesses.append(f"Probability thấp: {probability}%.")
+
+    if adx >= 30:
+        strengths.append(f"ADX mạnh: {adx}. Thị trường có lực.")
+    elif adx < 20:
+        weaknesses.append(f"ADX yếu: {adx}. Dễ nhiễu.")
+
+    if trend_bias == "BULLISH":
+        strengths.append("Trend Bias: BULLISH.")
+    elif trend_bias == "BEARISH":
+        strengths.append("Trend Bias: BEARISH.")
+    else:
+        weaknesses.append("Trend Bias trung lập.")
+
+    if momentum == "BULLISH":
+        strengths.append("Momentum: BULLISH.")
+    elif momentum == "BEARISH":
+        weaknesses.append("Momentum: BEARISH.")
+    else:
+        weaknesses.append("Momentum chưa rõ.")
+
+    if price_location in ["NEAR_SUPPORT", "LOW_RANGE"]:
+        strengths.append(f"Price Location tốt cho BUY: {price_location}.")
+    elif price_location in ["NEAR_RESISTANCE", "HIGH_RANGE"]:
+        weaknesses.append(f"Giá đang cao trong range: {price_location}.")
+
+    if breakout_risk == "LOW":
+        strengths.append("Breakout Risk thấp.")
+    elif breakout_risk == "HIGH":
+        weaknesses.append("Breakout Risk cao.")
+
+    if rr_value >= 2:
+        strengths.append(f"RR tốt: {rr_value}.")
+    elif rr_value > 0 and rr_value < 1.5:
+        weaknesses.append(f"RR thấp: {rr_value}. Không đáng vào ngay.")
+
+    if status == "WAIT_PULLBACK":
+        decision = "WAIT_PULLBACK"
+    elif direction in ["BUY", "SELL"] and rr_value >= 1.5 and probability >= 70:
+        decision = "READY"
+    elif direction == "WAIT":
+        decision = "WAIT"
+
+    return {
+        "trade_type": trade_type,
+        "decision": decision,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+        "summary": (
+            f"{decision}. {trade_type}. "
+            f"Final Score: {final_score}, Probability: {probability}%, Confidence: {confidence}."
+        )
+    }
 def validate_trade_plan(plan, gold_trend, score):
     final_score = int(score.get("final_score", 0))
     probability = int(score.get("probability", 50))
