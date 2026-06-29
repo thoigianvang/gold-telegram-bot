@@ -1284,7 +1284,10 @@ def apply_trade_filters(plan, gold_trend, score):
     status = plan.get("status", "WAIT")
 
     if direction == "WAIT":
-        return plan
+    return plan
+
+    if status == "WAIT_PULLBACK":
+    return plan
 
     rr = plan.get("rr", "-")
     try:
@@ -2962,7 +2965,132 @@ def check_bias_reversal(state, total_score):
             f"New Score: {total_score}"
         )
 
-    state["last_bias_score"] = total_score       
+    state["last_bias_score"] = total_score  
+def validate_trade_plan(plan, gold_trend, score):
+    final_score = int(score.get("final_score", 0))
+    probability = int(score.get("probability", 50))
+    confidence = score.get("confidence", "WAIT")
+    trend_bias = score.get("trend_bias", "NEUTRAL")
+    momentum = score.get("momentum", "NEUTRAL")
+    price_location = score.get("price_location", "UNKNOWN")
+
+    rr = plan.get("rr", "-")
+    try:
+        rr_value = float(rr)
+    except:
+        rr_value = 0
+
+    direction = plan.get("direction", "WAIT")
+    status = plan.get("status", "WAIT")
+
+    # 1) Nếu điểm yếu thì luôn WAIT
+    if abs(final_score) < 4 or probability < 60:
+        return {
+            "status": "WAIT",
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": (
+                f"WAIT. Final Score: {final_score}, Probability: {probability}%. "
+                "Edge chưa đủ mạnh. Không vào lệnh."
+            )
+        }
+
+    # 2) Nếu score mạnh nhưng RR xấu thì WAIT_PULLBACK, không NO_TRADE
+    if rr_value < 1.5:
+        if final_score >= 6:
+            return {
+                "status": "WAIT_PULLBACK",
+                "direction": "BUY",
+                "entry": plan.get("entry"),
+                "sl": plan.get("sl"),
+                "tp1": plan.get("tp1"),
+                "tp2": plan.get("tp2"),
+                "tp3": plan.get("tp3"),
+                "rr": rr,
+                "note": (
+                    f"BUY setup có lực. Final Score: {final_score}, Probability: {probability}%. "
+                    f"Nhưng RR thấp ({rr_value}), không BUY ngay. Chờ hồi sâu hơn."
+                )
+            }
+
+        if final_score <= -6:
+            return {
+                "status": "WAIT_PULLBACK",
+                "direction": "SELL",
+                "entry": plan.get("entry"),
+                "sl": plan.get("sl"),
+                "tp1": plan.get("tp1"),
+                "tp2": plan.get("tp2"),
+                "tp3": plan.get("tp3"),
+                "rr": rr,
+                "note": (
+                    f"SELL setup có lực. Final Score: {final_score}, Probability: {probability}%. "
+                    f"Nhưng RR thấp ({rr_value}), không SELL ngay. Chờ hồi sâu hơn."
+                )
+            }
+
+        return {
+            "status": "NO_TRADE",
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": f"NO TRADE. RR thấp ({rr_value}). Tối thiểu cần 1.5."
+        }
+
+    # 3) Nếu điểm mạnh và RR đạt
+    if final_score >= 6 and rr_value >= 1.5:
+        return {
+            "status": "READY",
+            "direction": "BUY",
+            "entry": plan.get("entry"),
+            "sl": plan.get("sl"),
+            "tp1": plan.get("tp1"),
+            "tp2": plan.get("tp2"),
+            "tp3": plan.get("tp3"),
+            "rr": rr,
+            "note": (
+                f"BUY READY. Final Score: {final_score}, Probability: {probability}%, "
+                f"Confidence: {confidence}. Chỉ BUY tại Entry Zone khi có nến xác nhận."
+            )
+        }
+
+    if final_score <= -6 and rr_value >= 1.5:
+        return {
+            "status": "READY",
+            "direction": "SELL",
+            "entry": plan.get("entry"),
+            "sl": plan.get("sl"),
+            "tp1": plan.get("tp1"),
+            "tp2": plan.get("tp2"),
+            "tp3": plan.get("tp3"),
+            "rr": rr,
+            "note": (
+                f"SELL READY. Final Score: {final_score}, Probability: {probability}%, "
+                f"Confidence: {confidence}. Chỉ SELL tại Entry Zone khi có nến xác nhận."
+            )
+        }
+
+    # 4) Trường hợp còn lại
+    return {
+        "status": status,
+        "direction": direction,
+        "entry": plan.get("entry"),
+        "sl": plan.get("sl"),
+        "tp1": plan.get("tp1"),
+        "tp2": plan.get("tp2"),
+        "tp3": plan.get("tp3"),
+        "rr": rr,
+        "note": plan.get("note")
+    }
 def manual_test(events, state):
     session_report(events, state, "TEST TREND")
 
@@ -2986,6 +3114,7 @@ def manual_test(events, state):
     )
 
     plan = build_trade_plan(gold_trend, score["final_score"])
+    plan = validate_trade_plan(plan, gold_trend, score)
     plan = apply_trade_filters(plan, gold_trend, score)
 
     trade_msg = format_trade_plan(gold_trend, plan, score)
