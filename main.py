@@ -1462,6 +1462,52 @@ def apply_trade_filters(plan, gold_trend, score):
         }
 
     return plan
+def pre_trade_gate(gold_trend, score):
+    trend = gold_trend.get("trend", "SIDEWAY")
+    adx = float(gold_trend.get("adx", 0))
+    price_location = score.get("price_location", "UNKNOWN")
+    momentum = score.get("momentum", "NEUTRAL")
+    probability = int(score.get("probability", 50))
+    final_score = int(score.get("final_score", 0))
+
+    if trend == "SIDEWAY":
+        return {
+            "allow": False,
+            "status": "NO_TRADE",
+            "reason": "SIDEWAY market. Không có xu hướng rõ.",
+            "action": "Không vào lệnh. Chờ trend rõ hơn."
+        }
+
+    if adx < 25:
+        return {
+            "allow": False,
+            "status": "NO_TRADE",
+            "reason": f"ADX yếu ({adx}). Thị trường dễ nhiễu.",
+            "action": "Không vào lệnh. Chờ ADX > 25."
+        }
+
+    if probability < 65:
+        return {
+            "allow": False,
+            "status": "NO_TRADE",
+            "reason": f"Probability thấp ({probability}%). Edge chưa đủ.",
+            "action": "Không vào lệnh."
+        }
+
+    if abs(final_score) < 4:
+        return {
+            "allow": False,
+            "status": "NO_TRADE",
+            "reason": f"Final Score yếu ({final_score}).",
+            "action": "Không vào lệnh."
+        }
+
+    return {
+        "allow": True,
+        "status": "PASS",
+        "reason": "Gate passed.",
+        "action": "Cho phép tạo trade plan."
+    }
 def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -3353,15 +3399,30 @@ def manual_test(events, state):
     gold_trend = get_gold_trend_signal()
 
     score = build_score_engine(
-        gold_trend,
-        news_score=0,
-        dollar_score=0,
-        yield_score=0
+    gold_trend,
+    news_score=0,
+    dollar_score=0,
+    yield_score=0
     )
 
-    plan = build_trade_plan(gold_trend, score["final_score"])
-    plan = validate_trade_plan(plan, gold_trend, score)
-    plan = apply_trade_filters(plan, gold_trend, score)
+    gate = pre_trade_gate(gold_trend, score)
+
+    if not gate["allow"]:
+        plan = {
+            "status": gate["status"],
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": f"{gate['reason']} {gate['action']}"
+        }
+    else:
+        plan = build_trade_plan(gold_trend, score["final_score"])
+        plan = validate_trade_plan(plan, gold_trend, score)
+        plan = apply_trade_filters(plan, gold_trend, score)
 
     trade_msg = format_trade_plan(gold_trend, plan, score)
     score_msg = format_score_engine(score)
