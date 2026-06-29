@@ -1009,14 +1009,17 @@ def classify_trend_bias(trend):
 
     return "NEUTRAL"
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
+
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
     low = float(gold_trend.get("low", 0))
+
     support = float(gold_trend.get("support", 0))
     resistance = float(gold_trend.get("resistance", 0))
 
     trend = gold_trend.get("trend", "SIDEWAY")
     trend_bias = classify_trend_bias(trend)
+
     adx = float(gold_trend.get("adx", 0))
     atr = float(gold_trend.get("atr", 0))
 
@@ -1026,22 +1029,28 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     sr_score = 0
     volatility_score = 0
 
-        # 1) Trend Score
-    if trend == "STRONG_UPTREND":
-        ema_score = 4
-    elif trend == "UPTREND":
-        ema_score = 3
-    elif trend == "PULLBACK_BUT_STILL_OK":
-        ema_score = 2
-    elif trend == "DOWNTREND":
-        ema_score = -3
-    elif trend == "STRONG_DOWNTREND":
-        ema_score = -4
-    else:
-        ema_score = 0
+    # =========================
+    # 1. TREND
+    # =========================
 
-    # 2) ADX chỉ xác nhận hướng trend
-    if adx >= 30:
+    trend_table = {
+        "STRONG_UPTREND": 4,
+        "UPTREND": 3,
+        "PULLBACK_BUT_STILL_OK": 2,
+        "SIDEWAY": 0,
+        "DOWNTREND": -3,
+        "STRONG_DOWNTREND": -4
+    }
+
+    ema_score = trend_table.get(trend, 0)
+
+    # =========================
+    # 2. ADX
+    # =========================
+
+    if adx >= 35:
+        adx_power = 3
+    elif adx >= 30:
         adx_power = 2
     elif adx >= 25:
         adx_power = 1
@@ -1055,101 +1064,196 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     else:
         adx_score = 0
 
-    # 3) Fibonacci
-    if high > 0 and low > 0 and price > 0:
+    # =========================
+    # 3. Fibonacci
+    # =========================
+
+    if high > low:
+
         fib = calculate_fibonacci(high, low)
+
         fib382 = fib["fib382"]
         fib500 = fib["fib500"]
         fib618 = fib["fib618"]
 
         if trend_bias == "BULLISH":
-            if price >= fib382 or fib500 <= price <= fib382:
+
+            if fib500 <= price <= fib382:
+                fib_score = 2
+
+            elif price >= fib382:
                 fib_score = 1
 
         elif trend_bias == "BEARISH":
-            if price <= fib618 or fib500 <= price <= fib382:
+
+            if fib500 <= price <= fib618:
+                fib_score = -2
+
+            elif price <= fib618:
                 fib_score = -1
 
-    # 4) Support / Resistance
-    if price > 0 and support > 0 and resistance > 0:
-        distance_to_support = abs(price - support)
-        distance_to_resistance = abs(resistance - price)
+    # =========================
+    # 4. Support Resistance
+    # =========================
 
-        if trend_bias == "BULLISH":
-            if distance_to_support < distance_to_resistance:
-                sr_score = 2
+    distance_support = abs(price-support)
+    distance_resistance = abs(resistance-price)
 
-        elif trend_bias == "BEARISH":
-            if distance_to_resistance < distance_to_support:
-                sr_score = -2
+    if trend_bias == "BULLISH":
 
-    # 5) Volatility Score
-    if atr > 0 and price > 0:
+        if distance_support < distance_resistance:
+            sr_score = 2
+
+    elif trend_bias == "BEARISH":
+
+        if distance_resistance < distance_support:
+            sr_score = -2
+
+    # =========================
+    # 5. ATR
+    # =========================
+
+    if price > 0:
+
         atr_pct = atr / price
 
         if 0.002 <= atr_pct <= 0.007:
             volatility_score = 1
-        elif atr_pct > 0.01:
+
+        elif atr_pct > 0.012:
             volatility_score = -1
 
-    # 6) Session + Momentum + Location
-    session_data = get_session_score()
-    session_score = session_data["score"]
+    # =========================
+    # 6. Session
+    # =========================
 
-    momentum_data = get_momentum_score(gold_trend)
-    momentum_score = int(momentum_data["momentum_score"])
+    session = get_session_score()
+
+    session_score = session["score"]
+
+    # =========================
+    # 7. Momentum
+    # =========================
+
+    momentum = get_momentum_score(gold_trend)
+
+    momentum_score = momentum["momentum_score"]
+
+    # =========================
+    # 8. Location
+    # =========================
 
     location = evaluate_price_location(gold_trend)
-    location_score = int(location["score"])
 
-    # 7) External
-    news_score = clamp_score(news_score, -3, 3)
-    dollar_score = clamp_score(dollar_score, -2, 2)
-    yield_score = clamp_score(yield_score, -2, 2)
+    location_score = location["score"]
+
+    # =========================
+    # 9. External
+    # =========================
+
+    news_score = clamp_score(news_score,-3,3)
+    dollar_score = clamp_score(dollar_score,-2,2)
+    yield_score = clamp_score(yield_score,-2,2)
+
+    # =========================
+    # 10. Final Score
+    # =========================
 
     final_score = (
+
         ema_score
+
         + adx_score
+
         + fib_score
+
         + sr_score
+
         + volatility_score
-        + news_score
-        + dollar_score
-        + yield_score
+
         + session_score
+
         + momentum_score
+
         + location_score
+
+        + news_score
+
+        + dollar_score
+
+        + yield_score
+
     )
 
-    final_score = clamp_score(final_score, -12, 12)
+    final_score = clamp_score(final_score,-12,12)
 
     probability = score_to_probability(final_score)
+
     confidence = probability_label(probability)
 
+    print("========== SCORE ==========")
+    print("Trend:",trend)
+    print("Trend Bias:",trend_bias)
+    print("EMA:",ema_score)
+    print("ADX:",adx_score)
+    print("FIB:",fib_score)
+    print("SR:",sr_score)
+    print("Momentum:",momentum_score)
+    print("Location:",location_score)
+    print("News:",news_score)
+    print("Dollar:",dollar_score)
+    print("Yield:",yield_score)
+    print("FINAL:",final_score)
+    print("===========================")
+
     return {
-        "trend_score": ema_score,
-        "trend_bias": trend_bias,
-        "adx_score": adx_score,
-        "fib_score": fib_score,
-        "sr_score": sr_score,
-        "volatility_score": volatility_score,
-        "news_score": news_score,
-        "dollar_score": dollar_score,
-        "yield_score": yield_score,
-        "session": session_data["session"],
-        "session_score": session_score,
-        "session_note": session_data["note"],
-        "momentum": momentum_data["momentum"],
-        "momentum_score": momentum_score,
-        "momentum_note": momentum_data["momentum_note"],
-        "price_location": location["location"],
-        "location_score": location_score,
-        "distance_to_support": location["distance_to_support"],
-        "distance_to_resistance": location["distance_to_resistance"],
-        "breakout_risk": location["breakout_risk"],
-        "final_score": final_score,
-        "probability": probability,
-        "confidence": confidence
+
+        "trend_score":ema_score,
+
+        "trend_bias":trend_bias,
+
+        "adx_score":adx_score,
+
+        "fib_score":fib_score,
+
+        "sr_score":sr_score,
+
+        "volatility_score":volatility_score,
+
+        "news_score":news_score,
+
+        "dollar_score":dollar_score,
+
+        "yield_score":yield_score,
+
+        "session":session["session"],
+
+        "session_score":session_score,
+
+        "session_note":session["note"],
+
+        "momentum":momentum["momentum"],
+
+        "momentum_score":momentum_score,
+
+        "momentum_note":momentum["momentum_note"],
+
+        "price_location":location["location"],
+
+        "location_score":location_score,
+
+        "distance_to_support":location["distance_to_support"],
+
+        "distance_to_resistance":location["distance_to_resistance"],
+
+        "breakout_risk":location["breakout_risk"],
+
+        "final_score":final_score,
+
+        "probability":probability,
+
+        "confidence":confidence
+
     }
 def format_score_engine(score):
 
