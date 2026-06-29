@@ -3402,15 +3402,15 @@ def build_ai_decision(plan, gold_trend, score):
     probability = int(score.get("probability", 50))
     confidence = score.get("confidence", "WAIT")
 
+    trend = gold_trend.get("trend", "SIDEWAY")
+    adx = float(gold_trend.get("adx", 0))
+
     trend_bias = score.get("trend_bias", "NEUTRAL")
     momentum = score.get("momentum", "NEUTRAL")
     price_location = score.get("price_location", "UNKNOWN")
     breakout_risk = score.get("breakout_risk", "UNKNOWN")
     market_regime = score.get("market_regime", "UNKNOWN")
     regime_action = score.get("regime_action", "OBSERVE")
-
-    adx = float(gold_trend.get("adx", 0))
-    trend = gold_trend.get("trend", "SIDEWAY")
 
     direction = plan.get("direction", "WAIT")
     status = plan.get("status", "WAIT")
@@ -3484,6 +3484,35 @@ def build_ai_decision(plan, gold_trend, score):
     if breakout_risk == "HIGH":
         weaknesses.append("Breakout Risk cao.")
 
+    # ===== HARD GATE: SIDEWAY =====
+    if trend == "SIDEWAY":
+        return {
+            "trade_type": "NO_SETUP",
+            "decision": regime_action if market_regime in ["RANGE_EDGE", "RANGE_ACTIVE"] else "OBSERVE",
+            "ai_confidence": "WAIT",
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "summary": (
+                f"OBSERVE. NO_SETUP. Regime: {market_regime}. "
+                f"Trend SIDEWAY, chưa có hướng rõ. Final Score: {final_score}, "
+                f"Probability: {probability}%, Confidence: WAIT."
+            )
+        }
+
+    # ===== HARD GATE: NO TRADE PLAN =====
+    if direction == "WAIT" or status in ["NO_TRADE", "WAIT"]:
+        return {
+            "trade_type": "NO_SETUP",
+            "decision": "WAIT",
+            "ai_confidence": "WAIT",
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "summary": (
+                f"WAIT. NO_SETUP. Status: {status}. "
+                f"Final Score: {final_score}, Probability: {probability}%, Confidence: WAIT."
+            )
+        }
+
     # ===== Decision =====
     if direction in ["BUY", "SELL"] and status == "READY" and rr_value >= 1.5 and probability >= 70:
         decision = "READY"
@@ -3493,10 +3522,6 @@ def build_ai_decision(plan, gold_trend, score):
         decision = "WAIT_PULLBACK"
         ai_confidence = "MEDIUM"
 
-    elif market_regime in ["RANGE_EDGE", "RANGE_ACTIVE"]:
-        decision = regime_action
-        ai_confidence = "OBSERVE"
-
     elif probability >= 60:
         decision = "OBSERVE"
         ai_confidence = "MEDIUM"
@@ -3505,10 +3530,6 @@ def build_ai_decision(plan, gold_trend, score):
         decision = "WAIT"
         ai_confidence = "LOW"
 
-    # ===== Trade Type Fix =====
-    if direction == "WAIT" or status in ["NO_TRADE", "WAIT"]:
-        trade_type = "NO_SETUP"
-
     return {
         "trade_type": trade_type,
         "decision": decision,
@@ -3516,9 +3537,8 @@ def build_ai_decision(plan, gold_trend, score):
         "strengths": strengths,
         "weaknesses": weaknesses,
         "summary": (
-            f"{decision}. {trade_type}. "
-            f"Regime: {market_regime}. Final Score: {final_score}, "
-            f"Probability: {probability}%, Confidence: {confidence}."
+            f"{decision}. {trade_type}. Regime: {market_regime}. "
+            f"Final Score: {final_score}, Probability: {probability}%, Confidence: {confidence}."
         )
     }
 def validate_trade_plan(plan, gold_trend, score):
