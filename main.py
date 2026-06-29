@@ -1190,6 +1190,13 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     probability = score_to_probability(final_score)
 
     confidence = probability_label(probability)
+    regime = detect_market_regime(gold_trend, {
+        "price_location": location["location"],
+        "momentum": momentum["momentum"],
+        "breakout_risk": location["breakout_risk"],
+        "final_score": final_score,
+       "probability": probability
+    })
 
     print("========== SCORE ==========")
     print("Trend:",trend)
@@ -1253,12 +1260,16 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "probability":probability,
 
         "confidence":confidence
+        "market_regime": regime["regime"],
+        "regime_action": regime["action"],
+        "regime_reason": regime["reason"],
 
     }
 def format_score_engine(score):
 
-    msg = "🧠 SCORE ENGINE\n"
+    msg = "🧠 SCORE ENGINE\n\n"
 
+    # Core Scores
     msg += f"EMA Trend Score: {score.get('trend_score')}\n"
     msg += f"ADX Score: {score.get('adx_score')}\n"
     msg += f"Fibonacci Score: {score.get('fib_score')}\n"
@@ -1268,6 +1279,10 @@ def format_score_engine(score):
     msg += f"News Score: {score.get('news_score')}\n"
     msg += f"Dollar Score: {score.get('dollar_score')}\n"
     msg += f"Yield Score: {score.get('yield_score')}\n"
+
+    msg += "--------------------\n"
+
+    # Price Structure
     msg += f"Price Location: {score.get('price_location')}\n"
     msg += f"Location Score: {score.get('location_score')}\n"
     msg += f"Distance To Support: {score.get('distance_to_support')}\n"
@@ -1276,6 +1291,7 @@ def format_score_engine(score):
 
     msg += "--------------------\n"
 
+    # Momentum
     msg += f"Momentum: {score.get('momentum')}\n"
     msg += f"Momentum Score: {score.get('momentum_score')}\n"
 
@@ -1284,11 +1300,22 @@ def format_score_engine(score):
 
     msg += "--------------------\n"
 
+    # Market Regime (V17)
+    msg += "📊 MARKET REGIME\n"
+    msg += f"Regime: {score.get('market_regime', '-')}\n"
+    msg += f"Action: {score.get('regime_action', '-')}\n"
+    msg += f"Reason: {score.get('regime_reason', '-')}\n"
+
+    msg += "--------------------\n"
+
+    # AI Confidence
     msg += f"Probability: {score.get('probability')}%\n"
     msg += f"Confidence: {score.get('confidence')}\n"
 
     msg += "--------------------\n"
 
+    # Final Result
+    msg += f"Trend Bias: {score.get('trend_bias')}\n"
     msg += f"Final Score: {score.get('final_score')}\n"
 
     return msg
@@ -1462,20 +1489,84 @@ def apply_trade_filters(plan, gold_trend, score):
         }
 
     return plan
+def detect_market_regime(gold_trend, score):
+    trend = gold_trend.get("trend", "SIDEWAY")
+    adx = float(gold_trend.get("adx", 0))
+    change_pct = float(gold_trend.get("change_pct", 0))
+    price_location = score.get("price_location", "UNKNOWN")
+    momentum = score.get("momentum", "NEUTRAL")
+    breakout_risk = score.get("breakout_risk", "UNKNOWN")
+    final_score = int(score.get("final_score", 0))
+    probability = int(score.get("probability", 50))
+
+    if trend == "SIDEWAY":
+        if adx >= 25 and price_location in ["NEAR_SUPPORT", "NEAR_RESISTANCE", "LOW_RANGE", "HIGH_RANGE"]:
+            regime = "RANGE_EDGE"
+            action = "WAIT_REVERSAL_OR_BREAKOUT"
+            reason = "Giá đang ở biên range, nhưng trend chưa rõ."
+        elif adx >= 25:
+            regime = "RANGE_ACTIVE"
+            action = "WAIT_BREAKOUT"
+            reason = "Sideway nhưng ADX khá mạnh, có thể chuẩn bị phá range."
+        else:
+            regime = "RANGE_WEAK"
+            action = "NO_TRADE"
+            reason = "Sideway yếu, dễ nhiễu."
+
+    elif trend in ["UPTREND", "STRONG_UPTREND", "PULLBACK_BUT_STILL_OK"]:
+        if momentum == "BULLISH" and probability >= 65:
+            regime = "BULL_TREND"
+            action = "WAIT_PULLBACK_BUY"
+            reason = "Xu hướng tăng còn lực, ưu tiên chờ hồi để BUY."
+        elif price_location in ["HIGH_RANGE", "NEAR_RESISTANCE"]:
+            regime = "BULL_TREND_EXTENDED"
+            action = "WAIT_DEEP_PULLBACK"
+            reason = "Xu hướng tăng nhưng giá đang cao, không BUY đuổi."
+        else:
+            regime = "BULL_TREND_OBSERVE"
+            action = "OBSERVE"
+            reason = "Xu hướng tăng nhưng tín hiệu vào lệnh chưa đủ rõ."
+
+    elif trend in ["DOWNTREND", "STRONG_DOWNTREND"]:
+        if momentum == "BEARISH" and probability >= 65:
+            regime = "BEAR_TREND"
+            action = "WAIT_PULLBACK_SELL"
+            reason = "Xu hướng giảm còn lực, ưu tiên chờ hồi để SELL."
+        elif price_location in ["LOW_RANGE", "NEAR_SUPPORT"]:
+            regime = "BEAR_TREND_EXTENDED"
+            action = "WAIT_DEEP_PULLBACK"
+            reason = "Xu hướng giảm nhưng giá đang thấp, không SELL đuổi."
+        else:
+            regime = "BEAR_TREND_OBSERVE"
+            action = "OBSERVE"
+            reason = "Xu hướng giảm nhưng tín hiệu vào lệnh chưa đủ rõ."
+
+    else:
+        regime = "UNKNOWN"
+        action = "OBSERVE"
+        reason = "Không xác định được cấu trúc thị trường."
+
+    return {
+        "regime": regime,
+        "action": action,
+        "reason": reason
+    }
 def pre_trade_gate(gold_trend, score):
     trend = gold_trend.get("trend", "SIDEWAY")
     adx = float(gold_trend.get("adx", 0))
-    price_location = score.get("price_location", "UNKNOWN")
-    momentum = score.get("momentum", "NEUTRAL")
     probability = int(score.get("probability", 50))
     final_score = int(score.get("final_score", 0))
+
+    regime = score.get("market_regime", "UNKNOWN")
+    regime_action = score.get("regime_action", "OBSERVE")
+    regime_reason = score.get("regime_reason", "")
 
     if trend == "SIDEWAY":
         return {
             "allow": False,
             "status": "NO_TRADE",
-            "reason": "SIDEWAY market. Không có xu hướng rõ.",
-            "action": "Không vào lệnh. Chờ trend rõ hơn."
+            "reason": f"{regime}. {regime_reason}",
+            "action": regime_action
         }
 
     if adx < 25:
@@ -1483,30 +1574,30 @@ def pre_trade_gate(gold_trend, score):
             "allow": False,
             "status": "NO_TRADE",
             "reason": f"ADX yếu ({adx}). Thị trường dễ nhiễu.",
-            "action": "Không vào lệnh. Chờ ADX > 25."
+            "action": "Chờ ADX > 25."
         }
 
     if probability < 65:
         return {
             "allow": False,
-            "status": "NO_TRADE",
+            "status": "OBSERVE",
             "reason": f"Probability thấp ({probability}%). Edge chưa đủ.",
-            "action": "Không vào lệnh."
+            "action": "Quan sát, chưa vào lệnh."
         }
 
     if abs(final_score) < 4:
         return {
             "allow": False,
-            "status": "NO_TRADE",
+            "status": "OBSERVE",
             "reason": f"Final Score yếu ({final_score}).",
-            "action": "Không vào lệnh."
+            "action": "Quan sát, chưa vào lệnh."
         }
 
     return {
         "allow": True,
         "status": "PASS",
-        "reason": "Gate passed.",
-        "action": "Cho phép tạo trade plan."
+        "reason": regime_reason,
+        "action": regime_action
     }
 def build_trade_plan(gold_trend, total_score):
     price = float(gold_trend.get("price", 0))
@@ -3408,18 +3499,17 @@ def manual_test(events, state):
     gate = pre_trade_gate(gold_trend, score)
 
     if not gate["allow"]:
-        plan = {
-            "status": gate["status"],
-            "direction": "WAIT",
-            "entry": "-",
-            "sl": "-",
-            "tp1": "-",
-            "tp2": "-",
-            "tp3": "-",
-            "rr": "-",
-            "note": f"{gate['reason']} {gate['action']}"
-        }
-    else:
+    plan = {
+        "status": gate["status"],
+        "direction": "WAIT",
+        "entry": "-",
+        "sl": "-",
+        "tp1": "-",
+        "tp2": "-",
+        "tp3": "-",
+        "rr": "-",
+        "note": f"{gate['reason']} Action: {gate['action']}"
+    }
         plan = build_trade_plan(gold_trend, score["final_score"])
         plan = validate_trade_plan(plan, gold_trend, score)
         plan = apply_trade_filters(plan, gold_trend, score)
