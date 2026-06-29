@@ -1284,10 +1284,10 @@ def apply_trade_filters(plan, gold_trend, score):
     status = plan.get("status", "WAIT")
 
     if direction == "WAIT":
-    return plan
+        return plan
 
     if status == "WAIT_PULLBACK":
-    return plan
+        return plan
 
     rr = plan.get("rr", "-")
     try:
