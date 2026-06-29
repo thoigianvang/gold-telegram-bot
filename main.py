@@ -1260,6 +1260,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "probability":probability,
 
         "confidence":confidence
+        
         "market_regime": regime["regime"],
         "regime_action": regime["action"],
         "regime_reason": regime["reason"],
