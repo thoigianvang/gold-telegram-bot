@@ -1008,6 +1008,68 @@ def classify_trend_bias(trend):
         return "NEUTRAL"
 
     return "NEUTRAL"
+def detect_liquidity_zones(gold_trend):
+    price = float(gold_trend.get("price", 0))
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+    support = float(gold_trend.get("support", 0))
+    resistance = float(gold_trend.get("resistance", 0))
+    atr = float(gold_trend.get("atr", 0))
+
+    if atr <= 0:
+        atr = max(price * 0.003, 10)
+
+    buy_side_liquidity = resistance + atr * 0.20
+    sell_side_liquidity = support - atr * 0.20
+
+    distance_to_bsl = abs(buy_side_liquidity - price)
+    distance_to_ssl = abs(price - sell_side_liquidity)
+
+    liquidity_zone = "MIDDLE"
+    sweep_risk = "LOW"
+    sweep_direction = "NONE"
+    score = 0
+    action = "WAIT"
+
+    if price >= resistance - atr * 0.35:
+        liquidity_zone = "NEAR_BUY_SIDE_LIQUIDITY"
+        sweep_risk = "MEDIUM"
+        sweep_direction = "BUY_SIDE_SWEEP"
+        score = -1
+        action = "WAIT_SELL_REJECTION"
+
+    elif price <= support + atr * 0.35:
+        liquidity_zone = "NEAR_SELL_SIDE_LIQUIDITY"
+        sweep_risk = "MEDIUM"
+        sweep_direction = "SELL_SIDE_SWEEP"
+        score = 1
+        action = "WAIT_BUY_REJECTION"
+
+    if price > buy_side_liquidity:
+        liquidity_zone = "BUY_SIDE_SWEPT"
+        sweep_risk = "HIGH"
+        sweep_direction = "BUY_SIDE_SWEPT"
+        score = -2
+        action = "WATCH_SELL_REVERSAL"
+
+    elif price < sell_side_liquidity:
+        liquidity_zone = "SELL_SIDE_SWEPT"
+        sweep_risk = "HIGH"
+        sweep_direction = "SELL_SIDE_SWEPT"
+        score = 2
+        action = "WATCH_BUY_REVERSAL"
+
+    return {
+        "buy_side_liquidity": round(buy_side_liquidity, 2),
+        "sell_side_liquidity": round(sell_side_liquidity, 2),
+        "distance_to_bsl": round(distance_to_bsl, 2),
+        "distance_to_ssl": round(distance_to_ssl, 2),
+        "liquidity_zone": liquidity_zone,
+        "sweep_risk": sweep_risk,
+        "sweep_direction": sweep_direction,
+        "liquidity_score": score,
+        "liquidity_action": action
+    }
 def detect_market_structure(gold_trend):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -1219,6 +1281,8 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     location_score = location["score"]
     structure = detect_market_structure(gold_trend)
     structure_score = int(structure["score"])
+    liquidity = detect_liquidity_zones(gold_trend)
+    liquidity_score = int(liquidity["liquidity_score"])
     # =========================
     # 9. External
     # =========================
@@ -1249,7 +1313,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
 
         + location_score
         + structure_score
-
+        + liquidity_score
         + news_score
 
         + dollar_score
@@ -1347,6 +1411,15 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "structure_action": structure["action"],
         "bos_up_level": structure["bos_up_level"],
         "bos_down_level": structure["bos_down_level"],
+        "buy_side_liquidity": liquidity["buy_side_liquidity"],
+        "sell_side_liquidity": liquidity["sell_side_liquidity"],
+        "distance_to_bsl": liquidity["distance_to_bsl"],
+        "distance_to_ssl": liquidity["distance_to_ssl"],
+        "liquidity_zone": liquidity["liquidity_zone"],
+        "sweep_risk": liquidity["sweep_risk"],
+        "sweep_direction": liquidity["sweep_direction"],
+        "liquidity_score": liquidity_score,
+        "liquidity_action": liquidity["liquidity_action"],
 
     }
 def format_score_engine(score):
@@ -1374,6 +1447,17 @@ def format_score_engine(score):
     msg += f"Breakout Risk: {score.get('breakout_risk')}\n"
     msg += "--------------------\n"
     msg += "📊 MARKET STRUCTURE\n"
+        msg += "--------------------\n"
+    msg += "💧 LIQUIDITY ENGINE\n"
+    msg += f"Buy Side Liquidity: {score.get('buy_side_liquidity')}\n"
+    msg += f"Sell Side Liquidity: {score.get('sell_side_liquidity')}\n"
+    msg += f"Distance To BSL: {score.get('distance_to_bsl')}\n"
+    msg += f"Distance To SSL: {score.get('distance_to_ssl')}\n"
+    msg += f"Liquidity Zone: {score.get('liquidity_zone')}\n"
+    msg += f"Sweep Risk: {score.get('sweep_risk')}\n"
+    msg += f"Sweep Direction: {score.get('sweep_direction')}\n"
+    msg += f"Liquidity Score: {score.get('liquidity_score')}\n"
+    msg += f"Liquidity Action: {score.get('liquidity_action')}\n"
     msg += f"Structure: {score.get('market_structure')}\n"
     msg += f"BOS: {score.get('bos')}\n"
     msg += f"CHOCH: {score.get('choch')}\n"
