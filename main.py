@@ -2313,6 +2313,78 @@ def build_scenarios(gold_trend, score):
         })
 
     return scenarios
+def format_trade_plan_quick(gold_trend, plan, score=None):
+    price = gold_trend.get("price", "-")
+    trend = gold_trend.get("trend", "-")
+    adx = gold_trend.get("adx", "-")
+
+    status = plan.get("status", "WAIT")
+    direction = plan.get("direction", "WAIT")
+    entry = plan.get("entry", "-")
+    sl = plan.get("sl", "-")
+    tp1 = plan.get("tp1", "-")
+    tp2 = plan.get("tp2", "-")
+    tp3 = plan.get("tp3", "-")
+    rr = plan.get("rr", "-")
+    note = plan.get("note", "-")
+
+    final_score = "-"
+    probability = "-"
+    confidence = "-"
+    trend_bias = "-"
+    market_regime = "-"
+    pd_zone = "-"
+    ob_action = "-"
+
+    if score is not None:
+        final_score = score.get("final_score", "-")
+        probability = score.get("probability", "-")
+        confidence = score.get("confidence", "-")
+        trend_bias = score.get("trend_bias", "-")
+        market_regime = score.get("market_regime", "-")
+        pd_zone = score.get("pd_zone", "-")
+        ob_action = score.get("ob_action", "-")
+
+    if direction == "BUY":
+        icon = "🟢"
+    elif direction == "SELL":
+        icon = "🔴"
+    else:
+        icon = "⚪"
+
+    msg = "📊 XAU/USD AI QUICK V23\n\n"
+
+    msg += f"Price: {price}\n"
+    msg += f"Trend: {trend}\n"
+    msg += f"Bias: {trend_bias}\n"
+    msg += f"ADX: {adx}\n"
+    msg += f"Score: {final_score}\n"
+    msg += f"Probability: {probability}%\n"
+    msg += f"Confidence: {confidence}\n\n"
+
+    msg += "🎯 DECISION\n"
+    msg += f"Status: {status}\n"
+    msg += f"{icon} Direction: {direction}\n"
+    msg += f"Regime: {market_regime}\n\n"
+
+    msg += "📍 LEVELS\n"
+    msg += f"Entry: {entry}\n"
+    msg += f"SL: {sl}\n"
+    msg += f"TP1: {tp1}\n"
+    msg += f"TP2: {tp2}\n"
+    msg += f"TP3: {tp3}\n"
+    msg += f"RR: {rr}\n\n"
+
+    msg += "⚖️ FILTER\n"
+    msg += f"PD: {pd_zone}\n"
+    msg += f"OB: {ob_action}\n\n"
+
+    msg += "📝 NOTE\n"
+    msg += f"{note}\n\n"
+
+    msg += "⚠️ Không vào lệnh trực tiếp. Chỉ vào khi có nến xác nhận."
+
+    return msg
 def format_trade_plan(gold_trend, plan, score=None, ai_decision=None):
     price = gold_trend.get("price", "-")
     open_price = gold_trend.get("open", "-")
@@ -4019,11 +4091,10 @@ def manual_test(events, state):
 
     ai_decision = build_ai_decision(plan, gold_trend, score)
 
-    trade_msg = format_trade_plan(gold_trend, plan, score, ai_decision)
+    trade_msg = format_trade_plan_quick(gold_trend, plan, score)
     score_msg = format_score_engine(score)
 
-    send_telegram(trade_msg + "\n\n" + score_msg)
-
+    send_telegram(trade_msg)
     msg = "✅ BOT TEST OK\n\n"
     msg += f"MODE: {MODE}\n"
     msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
