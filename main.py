@@ -3751,34 +3751,38 @@ def manual_test(events, state):
     gold_trend = get_gold_trend_signal()
 
     score = build_score_engine(
-    gold_trend,
-    news_score=0,
-    dollar_score=0,
-    yield_score=0
+        gold_trend,
+        news_score=0,
+        dollar_score=0,
+        yield_score=0
     )
 
     gate = pre_trade_gate(gold_trend, score)
 
     if not gate["allow"]:
         plan = {
-        "status": gate["status"],
-        "direction": "WAIT",
-        "entry": "-",
-        "sl": "-",
-        "tp1": "-",
-        "tp2": "-",
-        "tp3": "-",
-        "rr": "-",
-        "note": f"{gate['reason']} Action: {gate['action']}"
-    }
-        plan = build_trade_plan(gold_trend, score["final_score"])
-        plan = validate_trade_plan(plan, gold_trend, score)
+            "status": gate["status"],
+            "direction": "WAIT",
+            "entry": "-",
+            "sl": "-",
+            "tp1": "-",
+            "tp2": "-",
+            "tp3": "-",
+            "rr": "-",
+            "note": f"{gate['reason']} Action: {gate['action']}"
+        }
+    else:
+        raw_plan = build_trade_plan(gold_trend, score.get("final_score", 0))
+        plan = validate_trade_plan(raw_plan, gold_trend, score)
         plan = apply_trade_filters(plan, gold_trend, score)
 
-    trade_msg = format_trade_plan(gold_trend, plan, score, score)
+    ai_decision = build_ai_decision(plan, gold_trend, score)
+
+    trade_msg = format_trade_plan(gold_trend, plan, score, ai_decision)
     score_msg = format_score_engine(score)
 
     send_telegram(trade_msg + "\n\n" + score_msg)
+
     msg = "✅ BOT TEST OK\n\n"
     msg += f"MODE: {MODE}\n"
     msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
