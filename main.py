@@ -1008,6 +1008,69 @@ def classify_trend_bias(trend):
         return "NEUTRAL"
 
     return "NEUTRAL"
+def detect_order_block(gold_trend):
+    price = float(gold_trend.get("price", 0))
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+    support = float(gold_trend.get("support", 0))
+    resistance = float(gold_trend.get("resistance", 0))
+    atr = float(gold_trend.get("atr", 0))
+
+    trend = gold_trend.get("trend", "SIDEWAY")
+
+    if atr <= 0:
+        atr = max(price * 0.003, 10)
+
+    bullish_ob_low = support
+    bullish_ob_high = support + atr * 0.60
+
+    bearish_ob_low = resistance - atr * 0.60
+    bearish_ob_high = resistance
+
+    ob_type = "NONE"
+    ob_zone = "NONE"
+    ob_score = 0
+    ob_action = "WAIT"
+    ob_note = "Chưa có Order Block rõ."
+
+    if bullish_ob_low <= price <= bullish_ob_high:
+        ob_type = "BULLISH_OB"
+        ob_zone = f"{round(bullish_ob_low, 2)} - {round(bullish_ob_high, 2)}"
+        ob_score = 2
+        ob_action = "WAIT_BUY_CONFIRM"
+        ob_note = "Giá đang trong Bullish OB. Chỉ BUY nếu có nến xác nhận."
+
+    elif bearish_ob_low <= price <= bearish_ob_high:
+        ob_type = "BEARISH_OB"
+        ob_zone = f"{round(bearish_ob_low, 2)} - {round(bearish_ob_high, 2)}"
+        ob_score = -2
+        ob_action = "WAIT_SELL_CONFIRM"
+        ob_note = "Giá đang trong Bearish OB. Chỉ SELL nếu có nến xác nhận."
+
+    else:
+        if trend in ["STRONG_UPTREND", "UPTREND", "PULLBACK_BUT_STILL_OK"]:
+            ob_type = "BULLISH_OB_WAIT"
+            ob_zone = f"{round(bullish_ob_low, 2)} - {round(bullish_ob_high, 2)}"
+            ob_score = 0
+            ob_action = "WAIT_PULLBACK_TO_BULLISH_OB"
+            ob_note = "Trend tăng, chờ giá hồi về Bullish OB."
+
+        elif trend in ["STRONG_DOWNTREND", "DOWNTREND"]:
+            ob_type = "BEARISH_OB_WAIT"
+            ob_zone = f"{round(bearish_ob_low, 2)} - {round(bearish_ob_high, 2)}"
+            ob_score = 0
+            ob_action = "WAIT_PULLBACK_TO_BEARISH_OB"
+            ob_note = "Trend giảm, chờ giá hồi về Bearish OB."
+
+    return {
+        "ob_type": ob_type,
+        "ob_zone": ob_zone,
+        "ob_score": ob_score,
+        "ob_action": ob_action,
+        "ob_note": ob_note,
+        "bullish_ob_zone": f"{round(bullish_ob_low, 2)} - {round(bullish_ob_high, 2)}",
+        "bearish_ob_zone": f"{round(bearish_ob_low, 2)} - {round(bearish_ob_high, 2)}",
+    }
 def detect_premium_discount_zone(gold_trend):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -1344,6 +1407,8 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     liquidity_score = int(liquidity["liquidity_score"])
     pd = detect_premium_discount_zone(gold_trend)
     pd_score = int(pd["pd_score"])
+    ob = detect_order_block(gold_trend)
+    ob_score = int(ob["ob_score"])
     # =========================
     # 9. External
     # =========================
@@ -1376,6 +1441,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + structure_score
         + liquidity_score
         + pd_score
+        + ob_score
         + news_score
 
         + dollar_score
@@ -1484,6 +1550,13 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "liquidity_action": liquidity["liquidity_action"],
         "pd_zone": pd["pd_zone"],
         "pd_score": pd_score,
+        "ob_type": ob["ob_type"],
+        "ob_zone": ob["ob_zone"],
+        "ob_score": ob_score,
+        "ob_action": ob["ob_action"],
+        "ob_note": ob["ob_note"],
+        "bullish_ob_zone": ob["bullish_ob_zone"],
+        "bearish_ob_zone": ob["bearish_ob_zone"],
         "equilibrium": pd["equilibrium"],
         "discount_level": pd["discount_level"],
         "premium_level": pd["premium_level"],
@@ -1520,6 +1593,15 @@ def format_score_engine(score):
     msg += "💧 LIQUIDITY ENGINE\n"
     msg += "--------------------\n"
     msg += "⚖️ PREMIUM / DISCOUNT\n"
+    msg += "--------------------\n"
+    msg += "📦 ORDER BLOCK ENGINE\n"
+    msg += f"OB Type: {score.get('ob_type')}\n"
+    msg += f"OB Zone: {score.get('ob_zone')}\n"
+    msg += f"OB Score: {score.get('ob_score')}\n"
+    msg += f"OB Action: {score.get('ob_action')}\n"
+    msg += f"OB Note: {score.get('ob_note')}\n"
+    msg += f"Bullish OB: {score.get('bullish_ob_zone')}\n"
+    msg += f"Bearish OB: {score.get('bearish_ob_zone')}\n"
     msg += f"PD Zone: {score.get('pd_zone')}\n"
     msg += f"PD Score: {score.get('pd_score')}\n"
     msg += f"Equilibrium: {score.get('equilibrium')}\n"
