@@ -1447,7 +1447,7 @@ def format_score_engine(score):
     msg += f"Breakout Risk: {score.get('breakout_risk')}\n"
     msg += "--------------------\n"
     msg += "📊 MARKET STRUCTURE\n"
-        msg += "--------------------\n"
+    msg += "--------------------\n"
     msg += "💧 LIQUIDITY ENGINE\n"
     msg += f"Buy Side Liquidity: {score.get('buy_side_liquidity')}\n"
     msg += f"Sell Side Liquidity: {score.get('sell_side_liquidity')}\n"
