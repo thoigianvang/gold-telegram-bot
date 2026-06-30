@@ -1008,6 +1008,77 @@ def classify_trend_bias(trend):
         return "NEUTRAL"
 
     return "NEUTRAL"
+def detect_market_structure(gold_trend):
+    price = float(gold_trend.get("price", 0))
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+    support = float(gold_trend.get("support", 0))
+    resistance = float(gold_trend.get("resistance", 0))
+    atr = float(gold_trend.get("atr", 0))
+    trend = gold_trend.get("trend", "SIDEWAY")
+
+    if atr <= 0:
+        atr = max(price * 0.003, 10)
+
+    bos_up_level = resistance + atr * 0.15
+    bos_down_level = support - atr * 0.15
+
+    structure = "RANGE"
+    bos = "NO"
+    choch = "NO"
+    bias = "NEUTRAL"
+    score = 0
+    action = "WAIT"
+
+    if price > bos_up_level:
+        structure = "BOS_UP"
+        bos = "YES"
+        bias = "BULLISH"
+        score = 3
+        action = "BUY_BREAKOUT_CONFIRM"
+
+    elif price < bos_down_level:
+        structure = "BOS_DOWN"
+        bos = "YES"
+        bias = "BEARISH"
+        score = -3
+        action = "SELL_BREAKDOWN_CONFIRM"
+
+    elif trend in ["STRONG_UPTREND", "UPTREND", "PULLBACK_BUT_STILL_OK"]:
+        structure = "BULLISH_PULLBACK"
+        bias = "BULLISH"
+        score = 1
+        action = "WAIT_BUY_PULLBACK"
+
+    elif trend in ["STRONG_DOWNTREND", "DOWNTREND", "RECOVERY_BUT_WEAK"]:
+        structure = "BEARISH_PULLBACK"
+        bias = "BEARISH"
+        score = -1
+        action = "WAIT_SELL_PULLBACK"
+
+    else:
+        structure = "RANGE"
+        bias = "NEUTRAL"
+        score = 0
+        action = "WAIT_RANGE_EDGE"
+
+    # CHOCH: giá đang đổi hướng gần biên range
+    if trend == "SIDEWAY":
+        if price <= support + atr * 0.35:
+            choch = "WATCH_BUY_REVERSAL"
+        elif price >= resistance - atr * 0.35:
+            choch = "WATCH_SELL_REVERSAL"
+
+    return {
+        "structure": structure,
+        "bos": bos,
+        "choch": choch,
+        "bias": bias,
+        "score": score,
+        "action": action,
+        "bos_up_level": round(bos_up_level, 2),
+        "bos_down_level": round(bos_down_level, 2)
+    }
 def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
 
     price = float(gold_trend.get("price", 0))
@@ -1146,7 +1217,8 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     location = evaluate_price_location(gold_trend)
 
     location_score = location["score"]
-
+    structure = detect_market_structure(gold_trend)
+    structure_score = int(structure["score"])
     # =========================
     # 9. External
     # =========================
@@ -1176,6 +1248,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + momentum_score
 
         + location_score
+        + structure_score
 
         + news_score
 
@@ -1266,6 +1339,14 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "regime_action": regime["action"],
 
         "regime_reason": regime["reason"],
+        "market_structure": structure["structure"],
+        "bos": structure["bos"],
+        "choch": structure["choch"],
+        "structure_bias": structure["bias"],
+        "structure_score": structure_score,
+        "structure_action": structure["action"],
+        "bos_up_level": structure["bos_up_level"],
+        "bos_down_level": structure["bos_down_level"],
 
     }
 def format_score_engine(score):
@@ -1291,6 +1372,16 @@ def format_score_engine(score):
     msg += f"Distance To Support: {score.get('distance_to_support')}\n"
     msg += f"Distance To Resistance: {score.get('distance_to_resistance')}\n"
     msg += f"Breakout Risk: {score.get('breakout_risk')}\n"
+    msg += "--------------------\n"
+    msg += "📊 MARKET STRUCTURE\n"
+    msg += f"Structure: {score.get('market_structure')}\n"
+    msg += f"BOS: {score.get('bos')}\n"
+    msg += f"CHOCH: {score.get('choch')}\n"
+    msg += f"Structure Bias: {score.get('structure_bias')}\n"
+    msg += f"Structure Score: {score.get('structure_score')}\n"
+    msg += f"Action: {score.get('structure_action')}\n"
+    msg += f"BOS Up Level: {score.get('bos_up_level')}\n"
+    msg += f"BOS Down Level: {score.get('bos_down_level')}\n"
 
     msg += "--------------------\n"
 
