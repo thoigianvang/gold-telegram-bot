@@ -1008,6 +1008,65 @@ def classify_trend_bias(trend):
         return "NEUTRAL"
 
     return "NEUTRAL"
+def detect_premium_discount_zone(gold_trend):
+    price = float(gold_trend.get("price", 0))
+    high = float(gold_trend.get("high", 0))
+    low = float(gold_trend.get("low", 0))
+
+    if price <= 0 or high <= 0 or low <= 0 or high <= low:
+        return {
+            "pd_zone": "UNKNOWN",
+            "pd_score": 0,
+            "equilibrium": "-",
+            "discount_level": "-",
+            "premium_level": "-",
+            "pd_action": "WAIT",
+            "pd_note": "Không đủ dữ liệu Premium/Discount."
+        }
+
+    price_range = high - low
+    equilibrium = low + price_range * 0.50
+    discount_level = low + price_range * 0.382
+    premium_level = low + price_range * 0.618
+
+    pd_zone = "EQUILIBRIUM"
+    pd_score = 0
+    pd_action = "WAIT"
+    pd_note = "Giá đang quanh vùng cân bằng, lợi thế chưa rõ."
+
+    if price <= discount_level:
+        pd_zone = "DEEP_DISCOUNT"
+        pd_score = 2
+        pd_action = "LOOK_FOR_BUY"
+        pd_note = "Giá đang vùng Discount sâu, không nên SELL đuổi. Ưu tiên chờ BUY đảo chiều hoặc SELL breakdown thật."
+
+    elif price < equilibrium:
+        pd_zone = "DISCOUNT"
+        pd_score = 1
+        pd_action = "BUY_ONLY_IF_CONFIRM"
+        pd_note = "Giá dưới Equilibrium, ưu tiên tìm BUY nếu có xác nhận."
+
+    elif price >= premium_level:
+        pd_zone = "DEEP_PREMIUM"
+        pd_score = -2
+        pd_action = "LOOK_FOR_SELL"
+        pd_note = "Giá đang vùng Premium cao, không nên BUY đuổi. Ưu tiên chờ SELL đảo chiều hoặc BUY breakout thật."
+
+    elif price > equilibrium:
+        pd_zone = "PREMIUM"
+        pd_score = -1
+        pd_action = "SELL_ONLY_IF_CONFIRM"
+        pd_note = "Giá trên Equilibrium, ưu tiên tìm SELL nếu có xác nhận."
+
+    return {
+        "pd_zone": pd_zone,
+        "pd_score": pd_score,
+        "equilibrium": round(equilibrium, 2),
+        "discount_level": round(discount_level, 2),
+        "premium_level": round(premium_level, 2),
+        "pd_action": pd_action,
+        "pd_note": pd_note
+    }
 def detect_liquidity_zones(gold_trend):
     price = float(gold_trend.get("price", 0))
     high = float(gold_trend.get("high", 0))
@@ -1283,6 +1342,8 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
     structure_score = int(structure["score"])
     liquidity = detect_liquidity_zones(gold_trend)
     liquidity_score = int(liquidity["liquidity_score"])
+    pd = detect_premium_discount_zone(gold_trend)
+    pd_score = int(pd["pd_score"])
     # =========================
     # 9. External
     # =========================
@@ -1314,6 +1375,7 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         + location_score
         + structure_score
         + liquidity_score
+        + pd_score
         + news_score
 
         + dollar_score
@@ -1420,6 +1482,13 @@ def build_score_engine(gold_trend, news_score=0, dollar_score=0, yield_score=0):
         "sweep_direction": liquidity["sweep_direction"],
         "liquidity_score": liquidity_score,
         "liquidity_action": liquidity["liquidity_action"],
+        "pd_zone": pd["pd_zone"],
+        "pd_score": pd_score,
+        "equilibrium": pd["equilibrium"],
+        "discount_level": pd["discount_level"],
+        "premium_level": pd["premium_level"],
+        "pd_action": pd["pd_action"],
+        "pd_note": pd["pd_note"],
 
     }
 def format_score_engine(score):
@@ -1449,6 +1518,15 @@ def format_score_engine(score):
     msg += "📊 MARKET STRUCTURE\n"
     msg += "--------------------\n"
     msg += "💧 LIQUIDITY ENGINE\n"
+    msg += "--------------------\n"
+    msg += "⚖️ PREMIUM / DISCOUNT\n"
+    msg += f"PD Zone: {score.get('pd_zone')}\n"
+    msg += f"PD Score: {score.get('pd_score')}\n"
+    msg += f"Equilibrium: {score.get('equilibrium')}\n"
+    msg += f"Discount Level: {score.get('discount_level')}\n"
+    msg += f"Premium Level: {score.get('premium_level')}\n"
+    msg += f"PD Action: {score.get('pd_action')}\n"
+    msg += f"PD Note: {score.get('pd_note')}\n"
     msg += f"Buy Side Liquidity: {score.get('buy_side_liquidity')}\n"
     msg += f"Sell Side Liquidity: {score.get('sell_side_liquidity')}\n"
     msg += f"Distance To BSL: {score.get('distance_to_bsl')}\n"
@@ -3572,6 +3650,7 @@ def classify_trade_type(plan, gold_trend, score):
         return "SELL_SETUP"
 
     return "NO_SETUP"
+
 def build_ai_decision(plan, gold_trend, score):
     final_score = int(score.get("final_score", 0))
     probability = int(score.get("probability", 50))
@@ -3584,6 +3663,7 @@ def build_ai_decision(plan, gold_trend, score):
     momentum = score.get("momentum", "NEUTRAL")
     price_location = score.get("price_location", "UNKNOWN")
     breakout_risk = score.get("breakout_risk", "UNKNOWN")
+    pd_zone = score.get("pd_zone", "UNKNOWN")
     market_regime = score.get("market_regime", "UNKNOWN")
     regime_action = score.get("regime_action", "OBSERVE")
 
@@ -3603,7 +3683,6 @@ def build_ai_decision(plan, gold_trend, score):
     strengths = []
     weaknesses = []
 
-    # ===== Strengths =====
     if probability >= 75:
         strengths.append(f"Probability cao: {probability}%.")
     elif probability >= 65:
@@ -3614,30 +3693,31 @@ def build_ai_decision(plan, gold_trend, score):
     elif adx >= 25:
         strengths.append(f"ADX ổn: {adx}.")
 
-    if trend_bias == "BULLISH":
-        strengths.append("Trend Bias: BULLISH.")
-    elif trend_bias == "BEARISH":
-        strengths.append("Trend Bias: BEARISH.")
+    if trend_bias in ["BULLISH", "BEARISH"]:
+        strengths.append(f"Trend Bias: {trend_bias}.")
+    else:
+        weaknesses.append("Trend Bias trung lập.")
 
-    if momentum == "BULLISH":
-        strengths.append("Momentum: BULLISH.")
-    elif momentum == "BEARISH":
-        strengths.append("Momentum: BEARISH.")
+    if momentum in ["BULLISH", "BEARISH"]:
+        strengths.append(f"Momentum: {momentum}.")
+    else:
+        weaknesses.append("Momentum chưa rõ.")
 
     if price_location in ["NEAR_SUPPORT", "LOW_RANGE"]:
         strengths.append(f"Price Location tốt cho BUY: {price_location}.")
     elif price_location in ["NEAR_RESISTANCE", "HIGH_RANGE"]:
         strengths.append(f"Price Location tốt cho SELL: {price_location}.")
 
+    if pd_zone in ["DEEP_DISCOUNT", "DISCOUNT"]:
+        strengths.append(f"Premium/Discount tốt cho BUY: {pd_zone}.")
+    elif pd_zone in ["DEEP_PREMIUM", "PREMIUM"]:
+        strengths.append(f"Premium/Discount tốt cho SELL: {pd_zone}.")
+
     if breakout_risk == "LOW":
         strengths.append("Breakout Risk thấp.")
+    elif breakout_risk == "HIGH":
+        weaknesses.append("Breakout Risk cao.")
 
-    if rr_value >= 2:
-        strengths.append(f"RR tốt: {rr_value}.")
-    elif rr_value >= 1.5:
-        strengths.append(f"RR đạt chuẩn: {rr_value}.")
-
-    # ===== Weaknesses =====
     if probability < 60:
         weaknesses.append(f"Probability thấp: {probability}%.")
 
@@ -3647,19 +3727,19 @@ def build_ai_decision(plan, gold_trend, score):
     if trend == "SIDEWAY":
         weaknesses.append("Trend chưa rõ: SIDEWAY.")
 
-    if trend_bias == "NEUTRAL":
-        weaknesses.append("Trend Bias trung lập.")
-
-    if momentum == "NEUTRAL":
-        weaknesses.append("Momentum chưa rõ.")
-
-    if rr_value > 0 and rr_value < 1.5:
+    if rr_value >= 2:
+        strengths.append(f"RR tốt: {rr_value}.")
+    elif rr_value >= 1.5:
+        strengths.append(f"RR đạt chuẩn: {rr_value}.")
+    elif rr_value > 0:
         weaknesses.append(f"RR thấp: {rr_value}. Không đáng vào ngay.")
 
-    if breakout_risk == "HIGH":
-        weaknesses.append("Breakout Risk cao.")
+    if direction == "BUY" and pd_zone in ["DEEP_PREMIUM", "PREMIUM"]:
+        weaknesses.append(f"BUY không đẹp vì giá đang ở Premium: {pd_zone}.")
 
-    # ===== HARD GATE: SIDEWAY =====
+    if direction == "SELL" and pd_zone in ["DEEP_DISCOUNT", "DISCOUNT"]:
+        weaknesses.append(f"SELL không đẹp vì giá đang ở Discount: {pd_zone}.")
+
     if trend == "SIDEWAY":
         return {
             "trade_type": "NO_SETUP",
@@ -3674,7 +3754,6 @@ def build_ai_decision(plan, gold_trend, score):
             )
         }
 
-    # ===== HARD GATE: NO TRADE PLAN =====
     if direction == "WAIT" or status in ["NO_TRADE", "WAIT"]:
         return {
             "trade_type": "NO_SETUP",
@@ -3688,19 +3767,15 @@ def build_ai_decision(plan, gold_trend, score):
             )
         }
 
-    # ===== Decision =====
     if direction in ["BUY", "SELL"] and status == "READY" and rr_value >= 1.5 and probability >= 70:
         decision = "READY"
         ai_confidence = "HIGH"
-
     elif status == "WAIT_PULLBACK":
         decision = "WAIT_PULLBACK"
         ai_confidence = "MEDIUM"
-
     elif probability >= 60:
         decision = "OBSERVE"
         ai_confidence = "MEDIUM"
-
     else:
         decision = "WAIT"
         ai_confidence = "LOW"
