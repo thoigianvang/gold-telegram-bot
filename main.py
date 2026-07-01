@@ -2313,6 +2313,32 @@ def build_scenarios(gold_trend, score):
         })
 
     return scenarios
+def calculate_trade_grade(score, plan):
+    final_score = int(score.get("final_score", 0))
+    probability = int(score.get("probability", 50))
+    confidence = score.get("confidence", "WAIT")
+
+    try:
+        rr = float(plan.get("rr", 0))
+    except:
+        rr = 0
+
+    direction = plan.get("direction", "WAIT")
+    status = plan.get("status", "WAIT")
+
+    if direction == "WAIT" or status in ["NO_TRADE", "WAIT", "OBSERVE"]:
+        return "C"
+
+    if probability >= 85 and abs(final_score) >= 8 and rr >= 1.5:
+        return "A+"
+
+    if probability >= 75 and abs(final_score) >= 6 and rr >= 1.2:
+        return "A"
+
+    if probability >= 65 and abs(final_score) >= 4:
+        return "B"
+
+    return "C"
 def format_trade_plan_quick(gold_trend, plan, score=None):
     price = gold_trend.get("price", "-")
     trend = gold_trend.get("trend", "-")
@@ -2336,6 +2362,8 @@ def format_trade_plan_quick(gold_trend, plan, score=None):
     pd_zone = "-"
     ob_action = "-"
 
+        grade = "C"
+
     if score is not None:
         final_score = score.get("final_score", "-")
         probability = score.get("probability", "-")
@@ -2344,7 +2372,7 @@ def format_trade_plan_quick(gold_trend, plan, score=None):
         market_regime = score.get("market_regime", "-")
         pd_zone = score.get("pd_zone", "-")
         ob_action = score.get("ob_action", "-")
-
+        grade = calculate_trade_grade(score, plan)
     if direction == "BUY":
         icon = "🟢"
     elif direction == "SELL":
@@ -2354,19 +2382,12 @@ def format_trade_plan_quick(gold_trend, plan, score=None):
 
     msg = "📊 XAU/USD AI QUICK V23\n\n"
 
-    msg += f"Price: {price}\n"
+        msg += f"Price: {price}\n"
     msg += f"Trend: {trend}\n"
-    msg += f"Bias: {trend_bias}\n"
-    msg += f"ADX: {adx}\n"
-    msg += f"Score: {final_score}\n"
-    msg += f"Probability: {probability}%\n"
-    msg += f"Confidence: {confidence}\n\n"
-
-    msg += "🎯 DECISION\n"
-    msg += f"Status: {status}\n"
-    msg += f"{icon} Direction: {direction}\n"
-    msg += f"Regime: {market_regime}\n\n"
-
+    msg += f"Grade: {grade}\n"
+    msg += f"Probability: {probability}%\n\n"
+    msg += "🎯 ACTION\n"
+    msg += f"{status} | {icon} {direction}\n\n"
     msg += "📍 LEVELS\n"
     msg += f"Entry: {entry}\n"
     msg += f"SL: {sl}\n"
