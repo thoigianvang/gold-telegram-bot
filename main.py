@@ -2362,7 +2362,7 @@ def format_trade_plan_quick(gold_trend, plan, score=None):
     pd_zone = "-"
     ob_action = "-"
 
-        grade = "C"
+    grade = "C"
 
     if score is not None:
         final_score = score.get("final_score", "-")
