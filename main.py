@@ -2382,7 +2382,7 @@ def format_trade_plan_quick(gold_trend, plan, score=None):
 
     msg = "📊 XAU/USD AI QUICK V23\n\n"
 
-        msg += f"Price: {price}\n"
+    msg += f"Price: {price}\n"
     msg += f"Trend: {trend}\n"
     msg += f"Grade: {grade}\n"
     msg += f"Probability: {probability}%\n\n"
