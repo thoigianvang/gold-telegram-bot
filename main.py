@@ -79,7 +79,7 @@ def send_telegram(text):
 
     chunks = []
     cut = text.rfind("\n", 0, 3900)
-        if cut == -1:
+    if cut == -1:
             cut = 3900
         chunks.append(text[:cut])
         text = text[cut:].strip()
