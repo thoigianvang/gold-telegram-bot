@@ -4069,53 +4069,183 @@ def validate_trade_plan(plan, gold_trend, score):
         "rr": rr,
         "note": f"OBSERVE. Final Score: {final_score}, Probability: {probability}%. Có tín hiệu nhưng chưa đủ điều kiện READY."
     }
-def manual_test(events, state):
-    session_report(events, state, "TEST TREND")
+def analyze_gold_news_impact(event):
+    name = event.get("title", event.get("event", "UNKNOWN"))
+    currency = event.get("currency", "")
+    impact = event.get("impact", "")
+    forecast = event.get("forecast", "-")
+    previous = event.get("previous", "-")
+    actual = event.get("actual", "-")
 
-    spot_price = get_gold_spot_price()
-    send_telegram(f"🧪 GOLD US/OZ TEST\n\nPrice: {spot_price}")
+    name_lower = name.lower()
 
-    send_telegram(
-        f"🧪 TWELVE DATA KEY TEST\n\nKey exists: {bool(TWELVE_DATA_API_KEY)}"
-    )
+    result = "🟡 TRUNG LẬP"
+    bias = "NEUTRAL"
+    reason = "Chưa có dữ liệu Actual hoặc tác động chưa rõ."
 
-    gold_quote = get_gold_ohlc()
-    send_telegram(f"🧪 GOLD QUOTE TEST\n\n{gold_quote}")
-
-    gold_trend = get_gold_trend_signal()
-
-    score = build_score_engine(
-        gold_trend,
-        news_score=0,
-        dollar_score=0,
-        yield_score=0
-    )
-
-    gate = pre_trade_gate(gold_trend, score)
-
-    if not gate["allow"]:
-        plan = {
-            "status": gate["status"],
-            "direction": "WAIT",
-            "entry": "-",
-            "sl": "-",
-            "tp1": "-",
-            "tp2": "-",
-            "tp3": "-",
-            "rr": "-",
-            "note": f"{gate['reason']} Action: {gate['action']}"
+    if actual in ["", "-", None]:
+        return {
+            "name": name,
+            "currency": currency,
+            "impact": impact,
+            "forecast": forecast,
+            "previous": previous,
+            "actual": actual,
+            "bias": bias,
+            "result": result,
+            "reason": "Chưa có Actual. Chỉ theo dõi, chưa kết luận."
         }
+
+    try:
+        actual_num = float(str(actual).replace("%", "").replace("K", "").replace("M", "").replace(",", ""))
+        forecast_num = float(str(forecast).replace("%", "").replace("K", "").replace("M", "").replace(",", ""))
+    except:
+        actual_num = None
+        forecast_num = None
+
+    if actual_num is None or forecast_num is None:
+        return {
+            "name": name,
+            "currency": currency,
+            "impact": impact,
+            "forecast": forecast,
+            "previous": previous,
+            "actual": actual,
+            "bias": bias,
+            "result": result,
+            "reason": "Dữ liệu không phải dạng số. Cần đọc thủ công."
+        }
+
+    # Tin việc làm Mỹ: Actual cao hơn forecast thường xấu cho vàng
+    jobs_keywords = ["nfp", "non-farm", "payroll", "employment", "jobless", "claims", "unemployment"]
+
+    # Lạm phát: CPI/PPI cao hơn forecast thường xấu cho vàng
+    inflation_keywords = ["cpi", "ppi", "inflation", "pce"]
+
+    # Tăng trưởng/tiêu dùng mạnh thường xấu cho vàng
+    growth_keywords = ["gdp", "retail sales", "ism", "pmi", "manufacturing", "services"]
+
+    # Lãi suất / FED
+    rate_keywords = ["fomc", "fed", "interest rate", "rate decision"]
+
+    if any(k in name_lower for k in jobs_keywords):
+        if "jobless" in name_lower or "claims" in name_lower or "unemployment" in name_lower:
+            if actual_num > forecast_num:
+                bias = "BULLISH_GOLD"
+                result = "🟢 TỐT CHO VÀNG"
+                reason = "Thị trường lao động yếu hơn dự báo. USD có thể yếu, vàng được hỗ trợ."
+            else:
+                bias = "BEARISH_GOLD"
+                result = "🔴 XẤU CHO VÀNG"
+                reason = "Thị trường lao động mạnh hơn dự báo. USD có thể mạnh, vàng chịu áp lực."
+        else:
+            if actual_num > forecast_num:
+                bias = "BEARISH_GOLD"
+                result = "🔴 XẤU CHO VÀNG"
+                reason = "Việc làm mạnh hơn dự báo. FED có thể giữ lãi suất cao lâu hơn."
+            else:
+                bias = "BULLISH_GOLD"
+                result = "🟢 TỐT CHO VÀNG"
+                reason = "Việc làm yếu hơn dự báo. Kỳ vọng FED mềm hơn, có lợi cho vàng."
+
+    elif any(k in name_lower for k in inflation_keywords):
+        if actual_num > forecast_num:
+            bias = "BEARISH_GOLD"
+            result = "🔴 XẤU CHO VÀNG"
+            reason = "Lạm phát cao hơn dự báo. Lãi suất có thể duy trì cao, xấu cho vàng."
+        else:
+            bias = "BULLISH_GOLD"
+            result = "🟢 TỐT CHO VÀNG"
+            reason = "Lạm phát thấp hơn dự báo. Kỳ vọng giảm lãi suất tăng, tốt cho vàng."
+
+    elif any(k in name_lower for k in growth_keywords):
+        if actual_num > forecast_num:
+            bias = "BEARISH_GOLD"
+            result = "🔴 XẤU CHO VÀNG"
+            reason = "Kinh tế Mỹ mạnh hơn dự báo. USD có thể mạnh, vàng chịu áp lực."
+        else:
+            bias = "BULLISH_GOLD"
+            result = "🟢 TỐT CHO VÀNG"
+            reason = "Kinh tế Mỹ yếu hơn dự báo. Có lợi cho vàng."
+
+    elif any(k in name_lower for k in rate_keywords):
+        if actual_num > forecast_num:
+            bias = "BEARISH_GOLD"
+            result = "🔴 XẤU CHO VÀNG"
+            reason = "Lãi suất cao hơn kỳ vọng. Xấu cho vàng."
+        else:
+            bias = "BULLISH_GOLD"
+            result = "🟢 TỐT CHO VÀNG"
+            reason = "Lãi suất thấp hơn kỳ vọng. Tốt cho vàng."
+
+    return {
+        "name": name,
+        "currency": currency,
+        "impact": impact,
+        "forecast": forecast,
+        "previous": previous,
+        "actual": actual,
+        "bias": bias,
+        "result": result,
+        "reason": reason
+    }
+def send_gold_news_report(events):
+    usd_events = []
+
+    for e in events:
+        currency = e.get("currency", "")
+        impact = e.get("impact", "")
+
+        if currency == "USD":
+            usd_events.append(e)
+
+    if not usd_events:
+        send_telegram(
+            "📰 GOLD NEWS INTELLIGENCE\n\n"
+            "Hôm nay chưa có tin USD quan trọng ảnh hưởng mạnh đến vàng."
+        )
+        return
+
+    good_count = 0
+    bad_count = 0
+    neutral_count = 0
+
+    msg = "📰 GOLD NEWS INTELLIGENCE\n\n"
+    msg += f"Ngày: {datetime.now(JST).strftime('%d/%m/%Y')} JST\n\n"
+
+    for e in usd_events:
+        analysis = analyze_gold_news_impact(e)
+
+        if analysis["bias"] == "BULLISH_GOLD":
+            good_count += 1
+        elif analysis["bias"] == "BEARISH_GOLD":
+            bad_count += 1
+        else:
+            neutral_count += 1
+
+        msg += f"{analysis['result']}\n"
+        msg += f"Tin: {analysis['name']}\n"
+        msg += f"Forecast: {analysis['forecast']}\n"
+        msg += f"Previous: {analysis['previous']}\n"
+        msg += f"Actual: {analysis['actual']}\n"
+        msg += f"Lý do: {analysis['reason']}\n\n"
+
+    msg += "📊 TỔNG KẾT\n"
+    msg += f"🟢 Tốt cho vàng: {good_count}\n"
+    msg += f"🔴 Xấu cho vàng: {bad_count}\n"
+    msg += f"🟡 Trung lập/chưa có Actual: {neutral_count}\n\n"
+
+    if good_count > bad_count:
+        msg += "Kết luận: Tin hôm nay NGHIÊNG TỐT CHO VÀNG."
+    elif bad_count > good_count:
+        msg += "Kết luận: Tin hôm nay NGHIÊNG XẤU CHO VÀNG."
     else:
-        raw_plan = build_trade_plan(gold_trend, score.get("final_score", 0))
-        plan = validate_trade_plan(raw_plan, gold_trend, score)
-        plan = apply_trade_filters(plan, gold_trend, score)
+        msg += "Kết luận: Tin hôm nay CHƯA RÕ HƯỚNG."
 
-    ai_decision = build_ai_decision(plan, gold_trend, score)
+    send_telegram(msg)
+def manual_test(events, state):
+    send_gold_news_report(events)
 
-    trade_msg = format_trade_plan_quick(gold_trend, plan, score)
-    score_msg = format_score_engine(score)
-
-    send_telegram(trade_msg)
     msg = "✅ BOT TEST OK\n\n"
     msg += f"MODE: {MODE}\n"
     msg += f"Time: {datetime.now(JST).strftime('%m-%d %H:%M JST')}\n"
@@ -4123,7 +4253,6 @@ def manual_test(events, state):
     msg += "Telegram + GitHub Actions đang hoạt động."
 
     send_telegram(msg)
-
 def main():
     state = load_state()
     events = get_events()
