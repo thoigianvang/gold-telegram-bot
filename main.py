@@ -4192,34 +4192,52 @@ def analyze_gold_news_impact(event):
         "result": result,
         "reason": reason
     }
-def send_gold_news_report(events):
+def make_event_key(event):
+    title = str(event.get("title", event.get("event", ""))).strip()
+    time = str(event.get("time", "")).strip()
+    actual = str(event.get("actual", "")).strip()
+    forecast = str(event.get("forecast", "")).strip()
+    return f"news_{title}_{time}_{actual}_{forecast}"
+def send_gold_news_report(events, state):
     usd_events = []
 
     for e in events:
-        currency = e.get("currency", "")
-        impact = e.get("impact", "")
-
         currency = str(e.get("currency", "")).strip().upper()
+        impact = str(e.get("impact", "")).strip().lower()
 
         if currency == "USD":
             usd_events.append(e)
 
     if not usd_events:
-        send_telegram(
-            "📰 GOLD NEWS INTELLIGENCE\n\n"
-            "Hôm nay chưa có tin USD quan trọng ảnh hưởng mạnh đến vàng."
-        )
+        today_key = datetime.now(JST).strftime("no_usd_news_%Y_%m_%d")
+
+        if not state.get(today_key):
+            send_telegram(
+                "📰 GOLD NEWS INTELLIGENCE\n\n"
+                "Hôm nay chưa có tin USD quan trọng ảnh hưởng mạnh đến vàng."
+            )
+            mark_sent(state, today_key)
+
         return
 
     good_count = 0
     bad_count = 0
     neutral_count = 0
+    has_new_update = False
 
     msg = "📰 GOLD NEWS INTELLIGENCE\n\n"
     msg += f"Ngày: {datetime.now(JST).strftime('%d/%m/%Y')} JST\n\n"
 
     for e in usd_events:
+        key = make_event_key(e)
+
+        if state.get(key):
+            continue
+
         analysis = analyze_gold_news_impact(e)
+
+        has_new_update = True
+        mark_sent(state, key)
 
         if analysis["bias"] == "BULLISH_GOLD":
             good_count += 1
@@ -4235,21 +4253,24 @@ def send_gold_news_report(events):
         msg += f"Actual: {analysis['actual']}\n"
         msg += f"Lý do: {analysis['reason']}\n\n"
 
-    msg += "📊 TỔNG KẾT\n"
+    if not has_new_update:
+        return
+
+    msg += "📊 TỔNG KẾT CẬP NHẬT\n"
     msg += f"🟢 Tốt cho vàng: {good_count}\n"
     msg += f"🔴 Xấu cho vàng: {bad_count}\n"
     msg += f"🟡 Trung lập/chưa có Actual: {neutral_count}\n\n"
 
     if good_count > bad_count:
-        msg += "Kết luận: Tin hôm nay NGHIÊNG TỐT CHO VÀNG."
+        msg += "Kết luận: Tin mới NGHIÊNG TỐT CHO VÀNG."
     elif bad_count > good_count:
-        msg += "Kết luận: Tin hôm nay NGHIÊNG XẤU CHO VÀNG."
+        msg += "Kết luận: Tin mới NGHIÊNG XẤU CHO VÀNG."
     else:
-        msg += "Kết luận: Tin hôm nay CHƯA RÕ HƯỚNG."
+        msg += "Kết luận: Tin mới CHƯA RÕ HƯỚNG."
 
     send_telegram(msg)
 def manual_test(events, state):
-    send_gold_news_report(events)
+    send_gold_news_report(events, state)
 
     msg = "✅ BOT TEST OK\n\n"
     msg += f"MODE: {MODE}\n"
