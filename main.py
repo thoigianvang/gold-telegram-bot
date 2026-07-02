@@ -68,24 +68,22 @@ def save_state(state):
 def already_sent(state, key):
     return state.get(key) is True
 
-
 def mark_sent(state, key):
     state[key] = True
 
-
-_telegram(text):
+def send_telegram(text):
     if not BOT_TOKEN or not CHAT_ID:
         raise RuntimeError("Missing BOT_TOKEN or CHAT_ID")
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
     chunks = []
-    while len(text) > 3900:
         cut = text.rfind("\n", 0, 3900)
         if cut == -1:
             cut = 3900
         chunks.append(text[:cut])
         text = text[cut:].strip()
+
     chunks.append(text)
 
     for chunk in chunks:
@@ -98,11 +96,11 @@ _telegram(text):
             },
             timeout=20,
         )
+
         print("TELEGRAM:", r.status_code, r.text)
 
         if r.status_code != 200:
             raise RuntimeError(f"Telegram send failed: {r.status_code} {r.text}")
-
 
 def clean_value(v):
     if not v:
