@@ -73,7 +73,7 @@ def mark_sent(state, key):
     state[key] = True
 
 
-def send_telegram(text):
+_telegram(text):
     if not BOT_TOKEN or not CHAT_ID:
         raise RuntimeError("Missing BOT_TOKEN or CHAT_ID")
 
@@ -4195,6 +4195,8 @@ def send_gold_news_report(events):
     for e in events:
         currency = e.get("currency", "")
         impact = e.get("impact", "")
+
+        currency = str(e.get("currency", "")).strip().upper()
 
         if currency == "USD":
             usd_events.append(e)
