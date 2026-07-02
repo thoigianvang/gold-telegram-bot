@@ -78,7 +78,7 @@ def send_telegram(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
     chunks = []
-        cut = text.rfind("\n", 0, 3900)
+    cut = text.rfind("\n", 0, 3900)
         if cut == -1:
             cut = 3900
         chunks.append(text[:cut])
